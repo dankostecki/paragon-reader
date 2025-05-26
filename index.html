@@ -241,86 +241,52 @@
     </div>
 
     <script>
-        // Baza skrótów produktów z popularnych sklepów
-        const productDatabase = {
-            // Biedronka
-            'SchWpB': 'Schab wieprzowy bez kości',
-            'kMePaVac': 'mielony, pakowany próżniowo',
-            'SmothOwTro': 'Smoothie owocowe tropikalne',
-            'VFr0': 'VitaFresh',
-            'PapieToalet': 'Papier toaletowy',
-            'Queen': 'Queen',
-            'ButkaKajzerka': 'Bułka kajzerka',
-            'Butka': 'Bułka',
-            'Żytnia': 'żytnia',
-            
-            // Żabka
-            'CocaCola': 'Coca-Cola',
-            'RedBull': 'Red Bull',
-            'Snickers': 'Snickers',
-            'KitKat': 'Kit Kat',
-            'Marlboro': 'Marlboro',
-            
-            // Kaufland
-            'KChlebTost': 'K-Classic Chleb tostowy',
-            'KMasło': 'K-Classic Masło',
-            'KMleko': 'K-Classic Mleko',
-            'Jogurt': 'Jogurt naturalny',
-            
-            // Lidl
-            'Pilos': 'Pilos',
-            'Crivit': 'Crivit',
-            'Parkside': 'Parkside',
-            'Dulano': 'Dulano',
-            
-            // Tesco
-            'TescoVal': 'Tesco Value',
-            'TescoFin': 'Tesco Finest',
-            
-            // Carrefour
-            'CarrRef': 'Carrefour',
-            'CarrEco': 'Carrefour Eco Planet',
-            
-            // Ogólne skróty
-            'Chleb': 'Chleb',
-            'Mleko': 'Mleko',
-            'Masło': 'Masło',
-            'Jajka': 'Jajka',
-            'Ser': 'Ser',
-            'Jogurt': 'Jogurt',
-            'Kiełbasa': 'Kiełbasa',
-            'Szynka': 'Szynka',
-            'Ryż': 'Ryż',
-            'Makaron': 'Makaron',
-            'Cukier': 'Cukier',
-            'Sól': 'Sól',
-            'Olej': 'Olej',
-            'Woda': 'Woda mineralna',
-            'Sok': 'Sok',
-            'Piwo': 'Piwo',
-            'Wino': 'Wino',
-            'Papierosy': 'Papierosy',
-            'Kawa': 'Kawa',
-            'Herbata': 'Herbata',
-            'Ciastka': 'Ciastka',
-            'Czekolada': 'Czekolada',
-            'Chipsy': 'Chipsy',
-            'Owoce': 'Owoce',
-            'Warzywa': 'Warzywa',
-            'Ziemniaki': 'Ziemniaki',
-            'Marchew': 'Marchew',
-            'Cebula': 'Cebula',
-            'Pomidor': 'Pomidory',
-            'Ogórek': 'Ogórki',
-            'Kapusta': 'Kapusta',
-            'Papryka': 'Papryka',
-            'Banany': 'Banany',
-            'Jabłka': 'Jabłka',
-            'Pomarańcze': 'Pomarańcze',
-            'Cytryny': 'Cytryny',
-            'Truskawki': 'Truskawki',
-            'Winogrona': 'Winogrona'
-        };
+        // Globalne zmienne dla bazy danych
+        let productDatabase = {};
+        let databaseLoaded = false;
+        
+        // Załaduj bazę danych przy starcie
+        async function loadProductDatabase() {
+            try {
+                // Spróbuj załadować z tego samego katalogu
+                const response = await fetch('./product-database.json');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                productDatabase = data;
+                databaseLoaded = true;
+                
+                console.log('✅ Baza danych załadowana:', data.metadata);
+                console.log('📊 Sklepy:', Object.keys(data.stores));
+                console.log('🔤 Ogólne skróty:', Object.keys(data.general_shortcuts.shortcuts).length);
+                
+                return true;
+            } catch (error) {
+                console.warn('⚠️ Nie można załadować bazy danych:', error.message);
+                console.log('📝 Używam podstawowej bazy wbudowanej');
+                
+                // Fallback - podstawowa baza
+                productDatabase = {
+                    general_shortcuts: {
+                        shortcuts: {
+                            'SchWpB': 'Schab wieprzowy bez kości',
+                            'SmothOwTro': 'Smoothie owocowe tropikalne', 
+                            'PapieToalet': 'Papier toaletowy',
+                            'ButkaKajzerka': 'Bułka kajzerka',
+                            'Butka': 'Bułka',
+                            'Chleb': 'Chleb',
+                            'Mleko': 'Mleko',
+                            'Masło': 'Masło'
+                        }
+                    },
+                    stores: {}
+                };
+                databaseLoaded = true;
+                return false;
+            }
+        }
 
         const fileInput = document.getElementById('fileInput');
         const uploadSection = document.getElementById('uploadSection');
@@ -479,6 +445,17 @@
 
         // Sprawdź dostępność kamery przy załadowaniu strony
         window.addEventListener('load', async () => {
+            // Najpierw załaduj bazę danych
+            console.log('🚀 Ładowanie bazy danych...');
+            const dbLoaded = await loadProductDatabase();
+            
+            if (dbLoaded) {
+                console.log('✅ Baza danych załadowana pomyślnie');
+            } else {
+                console.log('⚠️ Używam podstawowej bazy danych');
+            }
+            
+            // Potem sprawdź kamery
             try {
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const videoDevices = devices.filter(device => device.kind === 'videoinput');
@@ -501,6 +478,12 @@
         function handleFile(file) {
             if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
                 showError('Proszę wybrać plik obrazu (JPG, PNG, WebP) lub PDF');
+                return;
+            }
+
+            // Sprawdź czy baza danych została załadowana
+            if (!databaseLoaded) {
+                showError('Baza danych jeszcze się ładuje. Spróbuj ponownie za chwilę.');
                 return;
             }
 
@@ -616,20 +599,24 @@
             const lines = text.split('\n').filter(line => line.trim().length > 3);
             const products = [];
             
+            // Wykryj sklep na podstawie tekstu paragonu
+            const detectedStore = detectStore(text);
+            console.log('🏪 Wykryty sklep:', detectedStore);
+            
             for (let line of lines) {
                 // Szukamy linii z produktami (zawierają cenę i być może ilość)
                 if (line.match(/\d+[,\.]\d{2}/) && !line.match(/SUMA|PTU|SPRZEDAŻ/)) {
-                    const product = parseProductLine(line);
+                    const product = parseProductLine(line, detectedStore);
                     if (product) {
                         products.push(product);
                     }
                 }
             }
             
-            displayResults(products);
+            displayResults(products, detectedStore);
         }
 
-        function parseProductLine(line) {
+        function parseProductLine(line, detectedStore = 'general') {
             // Próbujemy wyodrębnić nazwę produktu, ilość i cenę
             const priceMatch = line.match(/(\d+[,\.]\d{2})/g);
             if (!priceMatch) return null;
@@ -674,7 +661,7 @@
                 .replace(/\s*\d+[,\.]\d{2}.*/, '')  // usuń końcowe ceny
                 .trim();
             
-            const decodedName = decodeProductName(productName);
+            const decodedName = decodeProductName(productName, detectedStore);
             
             // Formatujemy ilość ładnie
             const formattedQuantity = formatQuantity(quantity, unit);
@@ -685,6 +672,7 @@
                 quantity: formattedQuantity,
                 rawQuantity: quantity,
                 unit: unit,
+                store: detectedStore,
                 line: line
             };
         }
@@ -716,13 +704,60 @@
             }
         }
 
-        function decodeProductName(name) {
-            let decoded = name;
+        function detectStore(receiptText) {
+            const text = receiptText.toLowerCase();
             
-            // Sprawdzamy każdy skrót w bazie danych
-            for (let [shortcut, fullName] of Object.entries(productDatabase)) {
-                if (name.includes(shortcut)) {
-                    decoded = decoded.replace(shortcut, fullName);
+            // Wykryj sklep na podstawie tekstu paragonu
+            if (text.includes('biedronka')) return 'biedronka';
+            if (text.includes('żabka') || text.includes('zabka')) return 'zabka';
+            if (text.includes('kaufland')) return 'kaufland';
+            if (text.includes('lidl')) return 'lidl';
+            if (text.includes('tesco')) return 'tesco';
+            if (text.includes('carrefour')) return 'carrefour';
+            
+            // Spróbuj wykryć na podstawie wzorców produktów
+            if (!productDatabase.common_patterns) return 'general';
+            
+            const patterns = productDatabase.common_patterns.store_patterns;
+            
+            for (const [store, indicators] of Object.entries(patterns)) {
+                for (const indicator of indicators) {
+                    if (text.includes(indicator.toLowerCase())) {
+                        return store.replace('_indicators', '');
+                    }
+                }
+            }
+            
+            return 'general'; // domyślnie ogólne skróty
+        }
+
+        function decodeProductName(name, detectedStore = 'general') {
+            if (!databaseLoaded) {
+                return name + ' (baza danych nie załadowana)';
+            }
+            
+            let decoded = name;
+            let foundMatch = false;
+            
+            // Najpierw spróbuj ze sklepem-specific skrótami
+            if (detectedStore !== 'general' && productDatabase.stores[detectedStore]) {
+                const storeShortcuts = productDatabase.stores[detectedStore].shortcuts;
+                
+                for (let [shortcut, fullName] of Object.entries(storeShortcuts)) {
+                    if (name.includes(shortcut)) {
+                        decoded = decoded.replace(shortcut, fullName);
+                        foundMatch = true;
+                    }
+                }
+            }
+            
+            // Potem spróbuj z ogólnymi skrótami
+            if (productDatabase.general_shortcuts && productDatabase.general_shortcuts.shortcuts) {
+                for (let [shortcut, fullName] of Object.entries(productDatabase.general_shortcuts.shortcuts)) {
+                    if (name.includes(shortcut)) {
+                        decoded = decoded.replace(shortcut, fullName);
+                        foundMatch = true;
+                    }
                 }
             }
             
@@ -736,16 +771,33 @@
                 .replace(/szt/, ' (sztuka)')
                 .replace(/op/, ' (opakowanie)');
             
-            return decoded !== name ? decoded : name + ' (nie rozpoznano)';
+            // Jeśli znaleziono dopasowanie, dodaj informację o sklepie
+            if (foundMatch && detectedStore !== 'general') {
+                const storeName = productDatabase.stores[detectedStore]?.name || detectedStore;
+                return `${decoded} [${storeName}]`;
+            }
+            
+            return foundMatch ? decoded : name + ' (nie rozpoznano)';
         }
 
-        function displayResults(products) {
+        function displayResults(products, detectedStore = 'general') {
             if (products.length === 0) {
                 results.innerHTML = '<div class="error">Nie znaleziono produktów na paragonie. Spróbuj z lepszym zdjęciem lub PDF o wyższej jakości.</div>';
                 return;
             }
             
-            let html = '<h3>🛒 Rozpoznane produkty:</h3>';
+            // Informacja o wykrytym sklepie
+            const storeName = detectedStore !== 'general' && productDatabase.stores[detectedStore] 
+                ? productDatabase.stores[detectedStore].name 
+                : 'Ogólny';
+            
+            let html = `
+                <div style="background: #e8f5e8; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                    <strong>🏪 Wykryty sklep:</strong> ${storeName}<br>
+                    <strong>🛒 Znalezione produkty:</strong> ${products.length}
+                </div>
+                <h3>📋 Rozpoznane produkty:</h3>
+            `;
             
             products.forEach((product, index) => {
                 // Dodajemy ikonę odpowiednią do jednostki
@@ -763,12 +815,18 @@
                 `;
             });
             
+            // Informacja o bazie danych i linki
+            const dbInfo = databaseLoaded && productDatabase.metadata 
+                ? `v${productDatabase.metadata.version} (${productDatabase.metadata.last_updated})`
+                : 'podstawowa';
+                
             html += `
-                <div style="margin-top: 20px; padding: 15px; background: #e8f5e8; border-radius: 5px;">
+                <div style="margin-top: 20px; padding: 15px; background: #f0f8ff; border-radius: 5px;">
                     <strong>💡 Wskazówki:</strong><br>
                     • PDF-y często dają lepsze rezultaty niż zdjęcia<br>
-                    • Jeśli produkty nie zostały rozpoznane, spróbuj z lepszym skanem<br>
-                    • Możesz rozszerzyć bazę skrótów w kodzie aplikacji
+                    • Baza danych: ${dbInfo}<br>
+                    • Możesz rozszerzyć plik <code>product-database.json</code> o nowe skróty<br>
+                    • Jeśli produkty nie zostały rozpoznane, dodaj ich skróty do bazy
                 </div>
             `;
             
