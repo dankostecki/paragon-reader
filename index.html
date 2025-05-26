@@ -812,6 +812,8 @@
                 shortcut: bestShortcut
             } : null;
         }
+
+        function detectStore(receiptText) {
             const text = receiptText.toLowerCase();
             
             // Wykryj sklep na podstawie tekstu paragonu
@@ -947,10 +949,16 @@
                 ? productDatabase.stores[detectedStore].name 
                 : 'Ogólny';
             
+            // Policz ile produktów zostało rozpoznanych z fuzzy matching
+            const recognizedProducts = products.filter(p => !p.decoded.includes('(nie rozpoznano)'));
+            const fuzzyMatches = products.filter(p => p.decoded.includes('~'));
+            
             let html = `
                 <div style="background: #e8f5e8; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
                     <strong>🏪 Wykryty sklep:</strong> ${storeName}<br>
-                    <strong>🛒 Znalezione produkty:</strong> ${products.length}
+                    <strong>🛒 Znalezione produkty:</strong> ${products.length}<br>
+                    <strong>✅ Rozpoznane:</strong> ${recognizedProducts.length}/${products.length}<br>
+                    <strong>🔍 Dopasowania przybliżone:</strong> ${fuzzyMatches.length}
                 </div>
                 <h3>📋 Rozpoznane produkty:</h3>
             `;
@@ -962,8 +970,16 @@
                 if (product.unit === 'l' || product.unit === 'ml') icon = '🥤';
                 if (product.unit === 'szt') icon = '🔢';
                 
+                // Sprawdź czy to fuzzy match
+                const isFuzzyMatch = product.decoded.includes('~');
+                const isNotRecognized = product.decoded.includes('(nie rozpoznano)');
+                
+                let productClass = 'product-item';
+                if (isFuzzyMatch) productClass += ' fuzzy-match';
+                if (isNotRecognized) productClass += ' not-recognized';
+                
                 html += `
-                    <div class="product-item">
+                    <div class="${productClass}">
                         <div class="product-original">Oryginalny tekst: ${product.original}</div>
                         <div class="product-decoded">${icon} ${product.decoded}</div>
                         <div class="quantity">📏 Ilość: <strong>${product.quantity}</strong></div>
@@ -971,18 +987,27 @@
                 `;
             });
             
-            // Informacja o bazie danych i linki
+            // Informacja o bazie danych i systemie dopasowania
             const dbInfo = databaseLoaded && productDatabase.metadata 
                 ? `v${productDatabase.metadata.version} (${productDatabase.metadata.last_updated})`
                 : 'podstawowa';
                 
             html += `
                 <div style="margin-top: 20px; padding: 15px; background: #f0f8ff; border-radius: 5px;">
-                    <strong>💡 Wskazówki:</strong><br>
-                    • PDF-y często dają lepsze rezultaty niż zdjęcia<br>
+                    <strong>💡 System inteligentnego dopasowania:</strong><br>
+                    • <strong>Dokładne dopasowanie:</strong> szuka exact match w bazie<br>
+                    • <strong>Fuzzy matching:</strong> tolerancja 75% podobieństwa (błędy OCR)<br>
+                    • <strong>Korekta OCR:</strong> automatyczne poprawianie typowych błędów<br>
                     • Baza danych: ${dbInfo}<br>
-                    • Możesz rozszerzyć plik <code>product-database.json</code> o nowe skróty<br>
-                    • Jeśli produkty nie zostały rozpoznane, dodaj ich skróty do bazy
+                    • Szczegóły dopasowań w konsoli przeglądarki (F12)
+                </div>
+                
+                <div style="margin-top: 15px; padding: 15px; background: #fff3cd; border-radius: 5px;">
+                    <strong>🎯 Jak dodać nowe skróty:</strong><br>
+                    1. Edytuj plik <code>product-database.json</code><br>
+                    2. Dodaj skrót do odpowiedniej sekcji sklepu<br>
+                    3. Format: <code>"Skrot": "Pełna nazwa produktu"</code><br>
+                    4. System automatycznie znajdzie podobne zapisy
                 </div>
             `;
             
