@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Czytnik Paragonów - OCR + AI Vision</title>
+    <title>Czytnik Paragonów</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.0/tesseract.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
@@ -50,42 +50,6 @@
             padding: 30px;
         }
         
-        .ai-toggle {
-            margin: 20px 0;
-            padding: 20px;
-            background: #f8f9ff;
-            border-radius: 10px;
-            border: 2px solid #667eea;
-        }
-        
-        .ai-toggle h4 {
-            margin: 0 0 15px 0;
-            color: #667eea;
-        }
-        
-        .ai-settings {
-            display: none;
-            margin-top: 15px;
-        }
-        
-        .api-key-input {
-            width: 100%;
-            max-width: 500px;
-            padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-            margin-bottom: 10px;
-            font-size: 14px;
-        }
-        
-        .api-help {
-            margin-top: 10px;
-            padding: 10px;
-            background: #fff3cd;
-            border-radius: 5px;
-            font-size: 0.9rem;
-        }
-        
         .upload-section {
             border: 3px dashed #667eea;
             border-radius: 10px;
@@ -118,7 +82,6 @@
             font-size: 1.1rem;
             cursor: pointer;
             transition: transform 0.2s ease;
-            margin: 5px;
         }
         
         .upload-btn:hover {
@@ -182,6 +145,11 @@
             border-left-color: #ffa500;
         }
         
+        .product-item.not-recognized {
+            background: #ffebee;
+            border-left-color: #f44336;
+        }
+        
         .product-original {
             font-family: monospace;
             color: #666;
@@ -227,69 +195,16 @@
             border-radius: 5px;
             margin: 10px 0;
         }
-        
-        .success-box {
-            background: #e8f5e8;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        
-        .info-box {
-            background: #f0f8ff;
-            padding: 15px;
-            border-radius: 5px;
-            margin-top: 20px;
-        }
-        
-        .warning-box {
-            background: #fff3cd;
-            padding: 15px;
-            border-radius: 5px;
-            margin-top: 15px;
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>🧾 Czytnik Paragonów</h1>
-            <p>Zaawansowany skaner paragonów z OCR i AI Vision</p>
+            <p>Zrób zdjęcie, wgraj plik lub PDF paragonu, a ja rozszyfruję sklepowe skróty</p>
         </div>
         
         <div class="main-content">
-            <!-- ============= AI VISION TOGGLE ============= -->
-            <div class="ai-toggle">
-                <h4>🧠 Claude AI Vision (Rekomendowane)</h4>
-                
-                <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                    <input type="checkbox" id="useClaude" onchange="toggleClaudeMode()">
-                    <span><strong>Użyj Claude AI zamiast OCR</strong> (95% dokładność, ~1-2 grosze za paragon)</span>
-                </label>
-                
-                <div id="claudeSettings" class="ai-settings">
-                    <!-- ⭐ TUTAJ WKLEJ SWÓJ API KEY ⭐ -->
-                    <input type="password" 
-                           id="claudeApiKey" 
-                           class="api-key-input"
-                           placeholder="wklej" 
-                           value="">
-                    
-                    <small style="color: #666;">
-                        ✅ API key nie jest zapisywany - tylko do tej sesji<br>
-                        ✅ Koszt: ~1-2 grosze za paragon | ✅ Dokładność: ~95%
-                    </small>
-                    
-                    <div class="api-help">
-                        <strong>💡 Jak uzyskać API key:</strong><br>
-                        1. Idź na <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a><br>
-                        2. API Keys → Create Key<br>
-                        3. Skopiuj key i wklej powyżej (lub zmień value="" w kodzie)
-                    </div>
-                </div>
-            </div>
-            
-            <!-- ============= UPLOAD SECTION ============= -->
             <div class="upload-section" id="uploadSection">
                 <h3>Zrób zdjęcie, wybierz plik lub przeciągnij paragon</h3>
                 <p style="margin: 15px 0; color: #666;">Obsługuje: JPG, PNG, WebP, <strong>PDF</strong></p>
@@ -307,7 +222,6 @@
                 <input type="file" id="fileInput" class="file-input" accept="image/*,.pdf">
             </div>
             
-            <!-- ============= CAMERA SECTION ============= -->
             <div class="camera-section" id="cameraSection" style="display: none;">
                 <h4>📷 Pozycjonuj paragon w kadrze</h4>
                 <video id="cameraVideo" autoplay playsinline style="width: 100%; max-width: 400px; border-radius: 10px; background: #000;"></video>
@@ -319,37 +233,71 @@
                 <canvas id="captureCanvas" style="display: none;"></canvas>
             </div>
             
-            <!-- ============= PREVIEW SECTION ============= -->
             <div class="preview-container" id="previewContainer" style="display: none;">
                 <img id="previewImage" class="preview-image" alt="Podgląd">
             </div>
             
-            <!-- ============= PROGRESS BAR ============= -->
             <div class="progress-bar" id="progressBar" style="display: none;">
                 <div class="progress-fill" id="progressFill"></div>
             </div>
             
-            <!-- ============= LOADING ============= -->
             <div id="loadingDiv" class="loading" style="display: none;">
                 <div class="loading-spinner"></div>
                 <p>Analizuję paragon...</p>
             </div>
             
-            <!-- ============= RESULTS ============= -->
             <div id="results" class="results"></div>
         </div>
     </div>
 
     <script>
-        // ============= GLOBALNE ZMIENNE =============
+        // Globalne zmienne dla bazy danych
         let productDatabase = {};
         let databaseLoaded = false;
-        let cameraStream = null;
         
-        // ⭐ CLAUDE API KEY - MOŻNA RÓWNIEŻ USTAWIĆ TUTAJ ⭐
-        let CLAUDE_API_KEY = ''; // Wklej tutaj swój key jeśli chcesz
+        // Załaduj bazę danych przy starcie
+        async function loadProductDatabase() {
+            try {
+                // Spróbuj załadować z tego samego katalogu
+                const response = await fetch('./product-database.json');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                productDatabase = data;
+                databaseLoaded = true;
+                
+                console.log('✅ Baza danych załadowana:', data.metadata);
+                console.log('📊 Sklepy:', Object.keys(data.stores));
+                console.log('🔤 Ogólne skróty:', Object.keys(data.general_shortcuts.shortcuts).length);
+                
+                return true;
+            } catch (error) {
+                console.warn('⚠️ Nie można załadować bazy danych:', error.message);
+                console.log('📝 Używam podstawowej bazy wbudowanej');
+                
+                // Fallback - podstawowa baza
+                productDatabase = {
+                    general_shortcuts: {
+                        shortcuts: {
+                            'SchWpB': 'Schab wieprzowy bez kości',
+                            'SmothOwTro': 'Smoothie owocowe tropikalne', 
+                            'PapieToalet': 'Papier toaletowy',
+                            'ButkaKajzerka': 'Bułka kajzerka',
+                            'Butka': 'Bułka',
+                            'Chleb': 'Chleb',
+                            'Mleko': 'Mleko',
+                            'Masło': 'Masło'
+                        }
+                    },
+                    stores: {}
+                };
+                databaseLoaded = true;
+                return false;
+            }
+        }
 
-        // ============= ELEMENTY DOM =============
         const fileInput = document.getElementById('fileInput');
         const uploadSection = document.getElementById('uploadSection');
         const cameraSection = document.getElementById('cameraSection');
@@ -361,593 +309,43 @@
         const progressFill = document.getElementById('progressFill');
         const loadingDiv = document.getElementById('loadingDiv');
         const results = document.getElementById('results');
+        
+        let cameraStream = null;
 
-        // ============= ŁADOWANIE BAZY DANYCH =============
-        async function loadProductDatabase() {
-            try {
-                const response = await fetch('./product-database.json');
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                const data = await response.json();
-                productDatabase = data;
-                databaseLoaded = true;
-                
-                console.log('✅ Baza danych załadowana:', data.metadata);
-                return true;
-            } catch (error) {
-                console.warn('⚠️ Nie można załadować bazy danych:', error.message);
-                
-                // Fallback - podstawowa baza
-                productDatabase = {
-                    general_shortcuts: {
-                        shortcuts: {
-                            'Kubus': 'Kubuś sok',
-                            'Serek': 'Serek',
-                            'Chleb': 'Chleb',
-                            'Mleko': 'Mleko'
-                        }
-                    },
-                    stores: {
-                        biedronka: {
-                            name: 'Biedronka',
-                            shortcuts: {
-                                'KubusPLau': 'Kubuś sok jabłkowy',
-                                'SerekKlas': 'Serek klasyczny'
-                            }
-                        }
-                    }
-                };
-                databaseLoaded = true;
-                return false;
+        // Obsługa drag & drop
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.classList.add('dragover');
+        });
+
+        uploadSection.addEventListener('dragleave', () => {
+            uploadSection.classList.remove('dragover');
+        });
+
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
             }
-        }
+        });
 
-        // ============= CLAUDE AI VISION =============
-        async function analyzeReceiptWithClaude(imageBase64) {
-            const prompt = `Przeanalizuj ten paragon sklepowy i zwróć dane w formacie JSON.
-
-INSTRUKCJE:
-1. Rozpoznaj wszystkie produkty z paragonu
-2. Dla każdego produktu podaj:
-   - oryginalną nazwę z paragonu (dokładnie jak jest napisana)
-   - pełną rozpoznaną nazwę produktu po polsku
-   - ilość (znajdź cyfrę przed "x" w linii produktu)
-   - jednostkę (szt/kg/g/l/ml)
-   - cenę za sztukę/kg
-3. Wykryj sklep (Biedronka, Lidl, Kaufland, Żabka, etc.)
-4. Zignoruj sumy, PTU, rabaty i inne podsumowania
-5. Tylko produkty/towary
-
-ODPOWIEDZ TYLKO W FORMACIE JSON (bez dodatkowego tekstu):
-{
-  "store": "nazwa_sklepu",
-  "products": [
-    {
-      "original": "tekst_z_paragonu",
-      "name": "pełna_nazwa_produktu", 
-      "quantity": liczba,
-      "unit": "szt",
-      "price": cena_za_sztuke
-    }
-  ]
-}`;
-
-            try {
-                console.log('🧠 Wysyłam do Claude...');
-                
-                const response = await fetch('https://api.anthropic.com/v1/messages', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-api-key': CLAUDE_API_KEY,
-                        'anthropic-version': '2023-06-01'
-                    },
-                    body: JSON.stringify({
-                        model: 'claude-3-sonnet-20240229',
-                        max_tokens: 1500,
-                        messages: [
-                            {
-                                role: "user",
-                                content: [
-                                    {
-                                        type: "image",
-                                        source: {
-                                            type: "base64",
-                                            media_type: "image/jpeg",
-                                            data: imageBase64
-                                        }
-                                    },
-                                    {
-                                        type: "text",
-                                        text: prompt
-                                    }
-                                ]
-                            }
-                        ]
-                    })
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(`Claude API error ${response.status}: ${errorData.error?.message || 'Unknown error'}`);
-                }
-
-                const data = await response.json();
-                const jsonResponse = data.content[0].text;
-                
-                console.log('🧠 Claude odpowiedział:', jsonResponse);
-                
-                const parsed = JSON.parse(jsonResponse);
-                return parsed;
-                
-            } catch (error) {
-                console.error('❌ Błąd Claude:', error);
-                throw error;
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
             }
-        }
+        });
 
-        // ============= HELPER FUNCTIONS =============
-        function convertToBase64(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = () => {
-                    const base64 = reader.result.split(',')[1];
-                    resolve(base64);
-                };
-                reader.onerror = error => reject(error);
-            });
-        }
-
-        function toggleClaudeMode() {
-            const useClaude = document.getElementById('useClaude').checked;
-            const claudeSettings = document.getElementById('claudeSettings');
-            
-            if (useClaude) {
-                claudeSettings.style.display = 'block';
-            } else {
-                claudeSettings.style.display = 'none';
-            }
-        }
-
-        // ============= AI ANALYSIS =============
-        async function processImageWithClaude(imageFile) {
-            showLoading();
-            
-            try {
-                console.log('📸 Konwertuję obraz...');
-                const base64 = await convertToBase64(imageFile);
-                
-                console.log('🧠 Analizuję z Claude...');
-                const result = await analyzeReceiptWithClaude(base64);
-                
-                hideLoading();
-                displayClaudeResults(result);
-                
-            } catch (error) {
-                hideLoading();
-                showError('Błąd Claude AI: ' + error.message);
-            }
-        }
-
-        function displayClaudeResults(aiData) {
-            if (!aiData.products || aiData.products.length === 0) {
-                results.innerHTML = '<div class="error">Claude nie znalazł produktów na paragonie. Spróbuj z lepszym zdjęciem.</div>';
-                return;
-            }
-            
-            let html = `
-                <div class="success-box">
-                    <strong>🧠 Analiza Claude AI Vision</strong><br>
-                    <strong>🏪 Wykryty sklep:</strong> ${aiData.store}<br>
-                    <strong>🛒 Znalezione produkty:</strong> ${aiData.products.length}<br>
-                    <strong>💰 Koszt analizy:</strong> ~1-2 grosze
-                </div>
-                <h3>📋 Produkty rozpoznane przez Claude:</h3>
-            `;
-            
-            aiData.products.forEach((product, index) => {
-                let icon = '📦';
-                if (product.unit === 'kg' || product.unit === 'g') icon = '⚖️';
-                if (product.unit === 'l' || product.unit === 'ml') icon = '🥤';
-                if (product.unit === 'szt') icon = '🔢';
-                
-                html += `
-                    <div class="product-item">
-                        <div class="product-original">Oryginalny tekst: ${product.original}</div>
-                        <div class="product-decoded">${icon} ${product.name}</div>
-                        <div class="quantity">📏 Ilość: <strong>${product.quantity} ${product.unit}</strong></div>
-                        <div style="color: #888; font-size: 0.9rem;">💰 Cena: ${product.price} zł za ${product.unit}</div>
-                    </div>
-                `;
-            });
-            
-            html += `
-                <div class="info-box">
-                    <strong>🧠 Claude AI Benefits:</strong><br>
-                    • ✅ Rozpoznaje produkty bez bazy skrótów<br>
-                    • ✅ Lepsze wyniki niż OCR (95% vs 70% dokładność)<br>
-                    • ✅ Automatycznie interpretuje polskie nazwy<br>
-                    • ✅ Obsługuje wszystkie sklepy bez konfiguracji<br>
-                    • ✅ Wyciąga prawidłowe ilości i ceny<br>
-                    • 💰 Koszt: tylko 1-2 grosze za paragon
-                </div>
-            `;
-            
-            results.innerHTML = html;
-        }
-
-        // ============= CLASSICAL OCR FUNCTIONS =============
-        function levenshteinDistance(str1, str2) {
-            const matrix = [];
-            
-            for (let i = 0; i <= str2.length; i++) {
-                matrix[i] = [i];
-            }
-            for (let j = 0; j <= str1.length; j++) {
-                matrix[0][j] = j;
-            }
-            
-            for (let i = 1; i <= str2.length; i++) {
-                for (let j = 1; j <= str1.length; j++) {
-                    if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
-                        matrix[i][j] = matrix[i - 1][j - 1];
-                    } else {
-                        matrix[i][j] = Math.min(
-                            matrix[i - 1][j - 1] + 1,
-                            matrix[i][j - 1] + 1,
-                            matrix[i - 1][j] + 1
-                        );
-                    }
-                }
-            }
-            
-            return matrix[str2.length][str1.length];
-        }
-
-        function calculateSimilarity(str1, str2) {
-            const maxLength = Math.max(str1.length, str2.length);
-            if (maxLength === 0) return 100;
-            
-            const distance = levenshteinDistance(str1.toLowerCase(), str2.toLowerCase());
-            return ((maxLength - distance) / maxLength) * 100;
-        }
-
-        function fixOCRErrors(text) {
-            return text
-                .replace(/0/g, 'O')
-                .replace(/1/g, 'l')
-                .replace(/5/g, 'S')
-                .replace(/8/g, 'B')
-                .replace(/rn/g, 'm')
-                .replace(/vv/g, 'w')
-                .replace(/\|/g, 'l')
-                .replace(/\s+/g, '');
-        }
-
-        function findBestMatch(productName, shortcuts, tolerance = 60) {
-            let bestMatch = null;
-            let bestSimilarity = 0;
-            let bestShortcut = '';
-            
-            const normalizedProduct = fixOCRErrors(productName).toLowerCase();
-            
-            for (let [shortcut, fullName] of Object.entries(shortcuts)) {
-                const normalizedShortcut = fixOCRErrors(shortcut).toLowerCase();
-                
-                if (normalizedProduct.includes(normalizedShortcut) || 
-                    normalizedShortcut.includes(normalizedProduct)) {
-                    
-                    const similarity = calculateSimilarity(normalizedProduct, normalizedShortcut);
-                    
-                    if (similarity >= tolerance && similarity > bestSimilarity) {
-                        bestMatch = fullName;
-                        bestSimilarity = similarity;
-                        bestShortcut = shortcut;
-                    }
-                }
-                
-                if (shortcut.length >= 4) {
-                    for (let i = 0; i <= normalizedProduct.length - 4; i++) {
-                        const fragment = normalizedProduct.substring(i, i + shortcut.length);
-                        const similarity = calculateSimilarity(fragment, normalizedShortcut);
-                        
-                        if (similarity >= tolerance && similarity > bestSimilarity) {
-                            bestMatch = fullName;
-                            bestSimilarity = similarity;
-                            bestShortcut = shortcut;
-                        }
-                    }
-                }
-            }
-            
-            return bestMatch ? {
-                match: bestMatch,
-                similarity: bestSimilarity,
-                shortcut: bestShortcut
-            } : null;
-        }
-
-        function detectStore(receiptText) {
-            const text = receiptText.toLowerCase();
-            
-            if (text.includes('biedronka')) return 'biedronka';
-            if (text.includes('żabka') || text.includes('zabka')) return 'zabka';
-            if (text.includes('kaufland')) return 'kaufland';
-            if (text.includes('lidl')) return 'lidl';
-            if (text.includes('tesco')) return 'tesco';
-            if (text.includes('carrefour')) return 'carrefour';
-            
-            return 'general';
-        }
-
-        function decodeProductName(name, detectedStore = 'general') {
-            if (!databaseLoaded) {
-                return name + ' (baza danych nie załadowana)';
-            }
-            
-            let decoded = name;
-            let foundMatch = false;
-            let bestSimilarity = 0;
-            
-            const tolerance = 60;
-            
-            if (detectedStore !== 'general' && productDatabase.stores[detectedStore]) {
-                const storeShortcuts = productDatabase.stores[detectedStore].shortcuts;
-                
-                const storeMatch = findBestMatch(name, storeShortcuts, tolerance);
-                if (storeMatch && storeMatch.similarity > bestSimilarity) {
-                    decoded = storeMatch.match;
-                    bestSimilarity = storeMatch.similarity;
-                    foundMatch = true;
-                }
-            }
-            
-            if (productDatabase.general_shortcuts && productDatabase.general_shortcuts.shortcuts) {
-                const generalMatch = findBestMatch(name, productDatabase.general_shortcuts.shortcuts, tolerance);
-                if (generalMatch && generalMatch.similarity > bestSimilarity) {
-                    decoded = generalMatch.match;
-                    bestSimilarity = generalMatch.similarity;
-                    foundMatch = true;
-                }
-            }
-            
-            if (!foundMatch) {
-                if (detectedStore !== 'general' && productDatabase.stores[detectedStore]) {
-                    const storeShortcuts = productDatabase.stores[detectedStore].shortcuts;
-                    
-                    for (let [shortcut, fullName] of Object.entries(storeShortcuts)) {
-                        if (name.includes(shortcut)) {
-                            decoded = decoded.replace(shortcut, fullName);
-                            foundMatch = true;
-                        }
-                    }
-                }
-                
-                if (productDatabase.general_shortcuts && productDatabase.general_shortcuts.shortcuts) {
-                    for (let [shortcut, fullName] of Object.entries(productDatabase.general_shortcuts.shortcuts)) {
-                        if (name.includes(shortcut)) {
-                            decoded = decoded.replace(shortcut, fullName);
-                            foundMatch = true;
-                        }
-                    }
-                }
-            }
-            
-            decoded = decoded
-                .replace(/VFr\d+/, 'VitaFresh')
-                .replace(/\d+g/, ' (opakowanie)')
-                .replace(/\d+ml/, 'ml')
-                .replace(/\d+l/, 'l')
-                .replace(/kg/, ' (za kilogram)')
-                .replace(/szt/, ' (sztuka)')
-                .replace(/op/, ' (opakowanie)');
-            
-            let result = decoded;
-            
-            if (foundMatch) {
-                if (detectedStore !== 'general') {
-                    const storeName = productDatabase.stores[detectedStore]?.name || detectedStore;
-                    result = `${decoded} [${storeName}]`;
-                }
-                
-                if (bestSimilarity > 0 && bestSimilarity < 100) {
-                    result += ` ~${Math.round(bestSimilarity)}%`;
-                }
-            } else {
-                result = name + ' (nie rozpoznano)';
-            }
-            
-            return result;
-        }
-
-        function parseProductLine(line, detectedStore = 'general') {
-            const priceMatch = line.match(/(\d+[,\.]\d{2})/g);
-            if (!priceMatch) return null;
-            
-            let quantity = '1';
-            let unit = 'szt';
-            let productName = line;
-            
-            // Znajdź cyfrę przed "x" gdziekolwiek w linii
-            const quantityMatch = line.match(/(\d+[,.]?\d*)\s*x/i);
-            if (quantityMatch) {
-                quantity = quantityMatch[1].replace(',', '.');
-                console.log(`🔍 Znaleziona ilość: ${quantity} z tekstu: "${line}"`);
-                
-                const beforeQuantity = line.split(/\d+[,.]?\d*\s*x/i)[0];
-                productName = beforeQuantity
-                    .replace(/\s+[A-Z]\s*$/, '')
-                    .trim();
-                
-                const lowerName = productName.toLowerCase();
-                const quantityNum = parseFloat(quantity);
-                
-                if (lowerName.includes('l') || lowerName.includes('ml')) {
-                    unit = 'szt';
-                } else if (lowerName.includes('kg') || lowerName.includes('g')) {
-                    unit = 'szt';
-                } else if (quantityNum < 1.0 && quantityNum > 0) {
-                    unit = 'kg';
-                } else {
-                    unit = 'szt';
-                }
-            } else {
-                const weightMatch = line.match(/(\d+[,\.]\d*)\s*(kg|g|szt|l|ml|op)/i);
-                if (weightMatch) {
-                    quantity = weightMatch[1].replace(',', '.');
-                    unit = weightMatch[2].toLowerCase();
-                }
-                
-                productName = line
-                    .replace(/\d+[,\.]\d*\s*(kg|g|szt|l|ml|op).*/, '')
-                    .replace(/\s*\d+[,\.]\d{2}.*/, '')
-                    .replace(/\s+[A-Z]\s*$/, '')
-                    .trim();
-            }
-            
-            const decodedName = decodeProductName(productName, detectedStore);
-            const formattedQuantity = formatQuantity(quantity, unit);
-            
-            return {
-                original: productName,
-                decoded: decodedName,
-                quantity: formattedQuantity,
-                rawQuantity: quantity,
-                unit: unit,
-                store: detectedStore,
-                line: line
-            };
-        }
-
-        function formatQuantity(quantity, unit) {
-            const num = parseFloat(quantity);
-            
-            switch(unit) {
-                case 'kg':
-                    if (num < 1) {
-                        return `${(num * 1000).toFixed(0)}g`;
-                    }
-                    return `${num.toFixed(3)}kg`;
-                case 'g':
-                    return `${num.toFixed(0)}g`;
-                case 'l':
-                    if (num < 1) {
-                        return `${(num * 1000).toFixed(0)}ml`;
-                    }
-                    return `${num.toFixed(2)}l`;
-                case 'ml':
-                    return `${num.toFixed(0)}ml`;
-                case 'szt':
-                    return num === 1 ? '1 sztuka' : `${num.toFixed(0)} sztuk`;
-                case 'op':
-                    return `${num.toFixed(0)} opakowanie`;
-                default:
-                    return `${quantity} ${unit}`;
-            }
-        }
-
-        function analyzeReceipt(text) {
-            const lines = text.split('\n').filter(line => line.trim().length > 3);
-            const products = [];
-            
-            const detectedStore = detectStore(text);
-            console.log('🏪 Wykryty sklep:', detectedStore);
-            
-            for (let line of lines) {
-                if (line.match(/\d+[,\.]\d{2}/) && !line.match(/SUMA|PTU|SPRZEDAŻ/)) {
-                    const product = parseProductLine(line, detectedStore);
-                    if (product) {
-                        products.push(product);
-                    }
-                }
-            }
-            
-            displayOCRResults(products, detectedStore);
-        }
-
-        function displayOCRResults(products, detectedStore = 'general') {
-            const recognizedProducts = products.filter(p => !p.decoded.includes('(nie rozpoznano)'));
-            
-            if (recognizedProducts.length === 0) {
-                results.innerHTML = '<div class="error">Nie znaleziono rozpoznanych produktów na paragonie. Spróbuj z lepszym zdjęciem lub dodaj skróty do bazy danych.</div>';
-                return;
-            }
-            
-            const storeName = detectedStore !== 'general' && productDatabase.stores[detectedStore] 
-                ? productDatabase.stores[detectedStore].name 
-                : 'Ogólny';
-            
-            const totalProducts = products.length;
-            const recognizedCount = recognizedProducts.length;
-            const fuzzyMatches = recognizedProducts.filter(p => p.decoded.includes('~'));
-            const notRecognizedCount = totalProducts - recognizedCount;
-            
-            let html = `
-                <div class="success-box">
-                    <strong>🔍 Analiza OCR + Fuzzy Matching</strong><br>
-                    <strong>🏪 Wykryty sklep:</strong> ${storeName}<br>
-                    <strong>🛒 Produkty na paragonie:</strong> ${totalProducts}<br>
-                    <strong>✅ Rozpoznane i pokazane:</strong> ${recognizedCount}<br>
-                    <strong>🔍 Dopasowania przybliżone:</strong> ${fuzzyMatches.length}
-                    ${notRecognizedCount > 0 ? `<br><strong>❌ Ukryte (nie rozpoznane):</strong> ${notRecognizedCount}` : ''}
-                </div>
-                <h3>📋 Rozpoznane produkty:</h3>
-            `;
-            
-            recognizedProducts.forEach((product, index) => {
-                let icon = '📦';
-                if (product.unit === 'kg' || product.unit === 'g') icon = '⚖️';
-                if (product.unit === 'l' || product.unit === 'ml') icon = '🥤';
-                if (product.unit === 'szt') icon = '🔢';
-                
-                const isFuzzyMatch = product.decoded.includes('~');
-                let productClass = 'product-item';
-                if (isFuzzyMatch) productClass += ' fuzzy-match';
-                
-                html += `
-                    <div class="${productClass}">
-                        <div class="product-original">Oryginalny tekst: ${product.original}</div>
-                        <div class="product-decoded">${icon} ${product.decoded}</div>
-                        <div class="quantity">📏 Ilość: <strong>${product.quantity}</strong></div>
-                    </div>
-                `;
-            });
-            
-            const dbInfo = databaseLoaded && productDatabase.metadata 
-                ? `v${productDatabase.metadata.version} (${productDatabase.metadata.last_updated})`
-                : 'podstawowa';
-                
-            html += `
-                <div class="info-box">
-                    <strong>💡 System OCR + Fuzzy Matching:</strong><br>
-                    • <strong>Dokładne dopasowanie:</strong> szuka exact match w bazie<br>
-                    • <strong>Fuzzy matching:</strong> tolerancja 60% podobieństwa (błędy OCR)<br>
-                    • <strong>Format Biedronki:</strong> rozpoznaje "nazwa C ilość x cena"<br>
-                    • Baza danych: ${dbInfo}
-                </div>
-                
-                <div class="warning-box">
-                    <strong>🎯 Jak zwiększyć rozpoznawalność:</strong><br>
-                    1. Edytuj plik <code>product-database.json</code><br>
-                    2. Dodaj skróty nierozpoznanych produktów do sekcji "${detectedStore}"<br>
-                    3. Format: <code>"SkrotZParagonu": "Pełna nazwa produktu"</code><br>
-                    4. LUB użyj Claude AI dla lepszych wyników
-                </div>
-            `;
-            
-            results.innerHTML = html;
-        }
-
-        // ============= CAMERA FUNCTIONS =============
+        // Funkcje kamery
         async function startCamera() {
             try {
+                // Sprawdź czy urządzenie obsługuje kamerę
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                     throw new Error('Twoja przeglądarka nie obsługuje kamery');
                 }
 
+                // Pierwsze spróbuj z kamerą tylną
                 let constraints = { 
                     video: { 
                         facingMode: 'environment',
@@ -959,6 +357,7 @@ ODPOWIEDZ TYLKO W FORMACIE JSON (bez dodatkowego tekstu):
                 try {
                     cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
                 } catch (envError) {
+                    // Jeśli kamera tylna nie działa, spróbuj z dowolną kamerą
                     console.log('Kamera tylna niedostępna, próbuję z przednią:', envError.message);
                     constraints = { 
                         video: { 
@@ -971,6 +370,7 @@ ODPOWIEDZ TYLKO W FORMACIE JSON (bez dodatkowego tekstu):
                 
                 cameraVideo.srcObject = cameraStream;
                 
+                // Poczekaj aż video się załaduje
                 cameraVideo.onloadedmetadata = () => {
                     cameraVideo.play();
                     cameraSection.style.display = 'block';
@@ -1002,17 +402,24 @@ ODPOWIEDZ TYLKO W FORMACIE JSON (bez dodatkowego tekstu):
                 const canvas = captureCanvas;
                 const video = cameraVideo;
                 
+                // Sprawdź czy video jest gotowe
                 if (video.readyState !== video.HAVE_ENOUGH_DATA) {
                     showError('Kamera jeszcze się ładuje. Spróbuj ponownie za chwilę.');
                     return;
                 }
                 
+                // Ustaw rozmiar canvas na podstawie video
                 canvas.width = video.videoWidth || 1280;
                 canvas.height = video.videoHeight || 720;
                 
+                console.log('Rozmiar zdjęcia:', canvas.width, 'x', canvas.height);
+                
                 const ctx = canvas.getContext('2d');
+                
+                // Narysuj ramkę z video na canvas
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                 
+                // Konwertuj na blob i pokaż podgląd
                 canvas.toBlob((blob) => {
                     if (!blob) {
                         showError('Nie udało się przechwycić zdjęcia. Spróbuj ponownie.');
@@ -1023,15 +430,10 @@ ODPOWIEDZ TYLKO W FORMACIE JSON (bez dodatkowego tekstu):
                     previewImage.src = url;
                     previewContainer.style.display = 'block';
                     
-                    stopCamera();
+                    console.log('Zdjęcie przechwycone, rozmiar blob:', blob.size, 'bajtów');
                     
-                    // Wybierz metodę analizy
-                    const useClaude = document.getElementById('useClaude').checked;
-                    if (useClaude) {
-                        processImageWithClaude(blob);
-                    } else {
-                        processImageFromCanvas(canvas);
-                    }
+                    stopCamera();
+                    processImageFromCanvas(canvas);
                 }, 'image/jpeg', 0.95);
                 
             } catch (error) {
@@ -1051,47 +453,54 @@ ODPOWIEDZ TYLKO W FORMACIE JSON (bez dodatkowego tekstu):
             uploadSection.style.display = 'block';
         }
 
-        // ============= FILE HANDLING =============
+        // Sprawdź dostępność kamery przy załadowaniu strony
+        window.addEventListener('load', async () => {
+            // Najpierw załaduj bazę danych
+            console.log('🚀 Ładowanie bazy danych...');
+            const dbLoaded = await loadProductDatabase();
+            
+            if (dbLoaded) {
+                console.log('✅ Baza danych załadowana pomyślnie');
+            } else {
+                console.log('⚠️ Używam podstawowej bazy danych');
+            }
+            
+            // Potem sprawdź kamery
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                
+                if (videoDevices.length === 0) {
+                    console.warn('Brak dostępnych kamer');
+                    // Ukryj przycisk kamery jeśli nie ma kamer
+                    const cameraBtn = document.querySelector('button[onclick="startCamera()"]');
+                    if (cameraBtn) {
+                        cameraBtn.style.display = 'none';
+                    }
+                } else {
+                    console.log(`Znaleziono ${videoDevices.length} kamer:`, videoDevices);
+                }
+            } catch (error) {
+                console.warn('Nie można sprawdzić dostępności kamer:', error);
+            }
+        });
+
         function handleFile(file) {
             if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
                 showError('Proszę wybrać plik obrazu (JPG, PNG, WebP) lub PDF');
                 return;
             }
 
-            const useClaude = document.getElementById('useClaude').checked;
-            
-            if (useClaude) {
-                // Sprawdź API key
-                let apiKey = document.getElementById('claudeApiKey').value.trim();
-                if (!apiKey && !CLAUDE_API_KEY) {
-                    showError('Podaj Claude API key żeby używać AI Vision');
-                    return;
-                }
-                
-                if (apiKey && !apiKey.startsWith('sk-ant-api03-')) {
-                    showError('API key powinien zaczynać się od "sk-ant-api03-"');
-                    return;
-                }
-                
-                // Użyj API key z input lub ze zmiennej
-                CLAUDE_API_KEY = apiKey || CLAUDE_API_KEY;
-                
-                if (file.type === 'application/pdf') {
-                    handlePDFForClaude(file);
-                } else {
-                    processImageWithClaude(file);
-                }
-            } else {
-                if (!databaseLoaded) {
-                    showError('Baza danych jeszcze się ładuje. Spróbuj ponownie za chwilę.');
-                    return;
-                }
+            // Sprawdź czy baza danych została załadowana
+            if (!databaseLoaded) {
+                showError('Baza danych jeszcze się ładuje. Spróbuj ponownie za chwilę.');
+                return;
+            }
 
-                if (file.type === 'application/pdf') {
-                    handlePDF(file);
-                } else {
-                    handleImage(file);
-                }
+            if (file.type === 'application/pdf') {
+                handlePDF(file);
+            } else {
+                handleImage(file);
             }
         }
 
@@ -1109,12 +518,15 @@ ODPOWIEDZ TYLKO W FORMACIE JSON (bez dodatkowego tekstu):
             showLoading();
             
             try {
+                // Konfiguracja PDF.js
                 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
                 
                 const arrayBuffer = await file.arrayBuffer();
                 const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+                
+                // Renderujemy pierwszą stronę (paragony to zwykle 1 strona)
                 const page = await pdf.getPage(1);
-                const scale = 2.0;
+                const scale = 2.0; // Wyższa jakość dla lepszego OCR
                 const viewport = page.getViewport({scale: scale});
                 
                 const canvas = document.createElement('canvas');
@@ -1122,16 +534,20 @@ ODPOWIEDZ TYLKO W FORMACIE JSON (bez dodatkowego tekstu):
                 canvas.height = viewport.height;
                 canvas.width = viewport.width;
                 
-                await page.render({
+                const renderContext = {
                     canvasContext: context,
                     viewport: viewport
-                }).promise;
+                };
                 
+                await page.render(renderContext).promise;
+                
+                // Pokazujemy podgląd
                 canvas.toBlob((blob) => {
                     const url = URL.createObjectURL(blob);
                     previewImage.src = url;
                     previewContainer.style.display = 'block';
                     
+                    // Przekazujemy canvas do OCR
                     processImageFromCanvas(canvas);
                 });
                 
@@ -1141,39 +557,43 @@ ODPOWIEDZ TYLKO W FORMACIE JSON (bez dodatkowego tekstu):
             }
         }
 
-        async function handlePDFForClaude(file) {
-            showLoading();
-            
+        async function processImageFromCanvas(canvas) {
             try {
-                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-                
-                const arrayBuffer = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
-                const page = await pdf.getPage(1);
-                const scale = 2.0;
-                const viewport = page.getViewport({scale: scale});
-                
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
-                
-                await page.render({
-                    canvasContext: context,
-                    viewport: viewport
-                }).promise;
-                
-                canvas.toBlob(async (blob) => {
-                    const url = URL.createObjectURL(blob);
-                    previewImage.src = url;
-                    previewContainer.style.display = 'block';
-                    
-                    await processImageWithClaude(blob);
-                }, 'image/jpeg', 0.95);
+                const result = await Tesseract.recognize(
+                    canvas,
+                    'pol+eng', // polski + angielski dla lepszych wyników
+                    {
+                        logger: m => {
+                            if (m.status === 'recognizing text') {
+                                updateProgress(m.progress * 100);
+                            }
+                        },
+                        // Zaawansowane opcje dla lepszej dokładności
+                        tessedit_pageseg_mode: Tesseract.PSM.AUTO, // automatyczna segmentacja
+                        tessedit_ocr_engine_mode: Tesseract.OEM.LSTM_ONLY, // najlepszy silnik
+                        preserve_interword_spaces: '1', // zachowaj spacje między słowami
+                        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ąćęłńóśźżĄĆĘŁŃÓŚŹŻ .,;:-+()[]{}/', // dozwolone znaki
+                        // Ustawienia dla paragonów
+                        tessedit_write_images: '0', // wyłącz zapis debug obrazów
+                        user_defined_dpi: '300', // wysoka rozdzielczość
+                        // Preprocessing
+                        textord_heavy_nr: '1', // lepsza analiza szumu
+                        // Dla małych tekstów (paragony)
+                        textord_min_linesize: '2.5',
+                        // Zwiększ pewność rozpoznawania
+                        tessedit_reject_bad_qual_wds: '1',
+                        // Optymalizacja dla dokumentów
+                        load_system_dawg: '0',
+                        load_freq_dawg: '0'
+                    }
+                );
+
+                hideLoading();
+                analyzeReceipt(result.data.text);
                 
             } catch (error) {
                 hideLoading();
-                showError('Błąd podczas przetwarzania PDF: ' + error.message);
+                showError('Błąd podczas analizowania PDF: ' + error.message);
             }
         }
 
@@ -1183,22 +603,28 @@ ODPOWIEDZ TYLKO W FORMACIE JSON (bez dodatkowego tekstu):
             try {
                 const result = await Tesseract.recognize(
                     file,
-                    'pol+eng',
+                    'pol+eng', // polski + angielski dla lepszych wyników
                     {
                         logger: m => {
                             if (m.status === 'recognizing text') {
                                 updateProgress(m.progress * 100);
                             }
                         },
-                        tessedit_pageseg_mode: Tesseract.PSM.AUTO,
-                        tessedit_ocr_engine_mode: Tesseract.OEM.LSTM_ONLY,
-                        preserve_interword_spaces: '1',
-                        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ąćęłńóśźżĄĆĘŁŃÓŚŹŻ .,;:-+()[]{}/',
-                        tessedit_write_images: '0',
-                        user_defined_dpi: '300',
-                        textord_heavy_nr: '1',
+                        // Zaawansowane opcje dla lepszej dokładności
+                        tessedit_pageseg_mode: Tesseract.PSM.AUTO, // automatyczna segmentacja
+                        tessedit_ocr_engine_mode: Tesseract.OEM.LSTM_ONLY, // najlepszy silnik
+                        preserve_interword_spaces: '1', // zachowaj spacje między słowami
+                        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ąćęłńóśźżĄĆĘŁŃÓŚŹŻ .,;:-+()[]{}/', // dozwolone znaki
+                        // Ustawienia dla paragonów
+                        tessedit_write_images: '0', // wyłącz zapis debug obrazów
+                        user_defined_dpi: '300', // wysoka rozdzielczość
+                        // Preprocessing
+                        textord_heavy_nr: '1', // lepsza analiza szumu
+                        // Dla małych tekstów (paragony)
                         textord_min_linesize: '2.5',
+                        // Zwiększ pewność rozpoznawania
                         tessedit_reject_bad_qual_wds: '1',
+                        // Optymalizacja dla dokumentów
                         load_system_dawg: '0',
                         load_freq_dawg: '0'
                     }
@@ -1213,41 +639,430 @@ ODPOWIEDZ TYLKO W FORMACIE JSON (bez dodatkowego tekstu):
             }
         }
 
-        async function processImageFromCanvas(canvas) {
-            try {
-                const result = await Tesseract.recognize(
-                    canvas,
-                    'pol+eng',
-                    {
-                        logger: m => {
-                            if (m.status === 'recognizing text') {
-                                updateProgress(m.progress * 100);
-                            }
-                        },
-                        tessedit_pageseg_mode: Tesseract.PSM.AUTO,
-                        tessedit_ocr_engine_mode: Tesseract.OEM.LSTM_ONLY,
-                        preserve_interword_spaces: '1',
-                        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ąćęłńóśźżĄĆĘŁŃÓŚŹŻ .,;:-+()[]{}/',
-                        tessedit_write_images: '0',
-                        user_defined_dpi: '300',
-                        textord_heavy_nr: '1',
-                        textord_min_linesize: '2.5',
-                        tessedit_reject_bad_qual_wds: '1',
-                        load_system_dawg: '0',
-                        load_freq_dawg: '0'
+        function analyzeReceipt(text) {
+            const lines = text.split('\n').filter(line => line.trim().length > 3);
+            const products = [];
+            
+            // Wykryj sklep na podstawie tekstu paragonu
+            const detectedStore = detectStore(text);
+            console.log('🏪 Wykryty sklep:', detectedStore);
+            
+            for (let line of lines) {
+                // Szukamy linii z produktami (zawierają cenę i być może ilość)
+                if (line.match(/\d+[,\.]\d{2}/) && !line.match(/SUMA|PTU|SPRZEDAŻ/)) {
+                    const product = parseProductLine(line, detectedStore);
+                    if (product) {
+                        products.push(product);
                     }
-                );
+                }
+            }
+            
+            displayResults(products, detectedStore);
+        }
 
-                hideLoading();
-                analyzeReceipt(result.data.text);
+        function parseProductLine(line, detectedStore = 'general') {
+            // Próbujemy wyodrębnić nazwę produktu, ilość i cenę
+            const priceMatch = line.match(/(\d+[,\.]\d{2})/g);
+            if (!priceMatch) return null;
+            
+            let quantity = '1';
+            let unit = 'szt';
+            let productName = line;
+            
+            // UNIWERSALNY WZORZEC: znajdź cyfrę przed "x" gdziekolwiek w linii
+            // Przykłady: "2 x", "4x", "0,876 x", "1.5x"
+            const quantityMatch = line.match(/(\d+[,.]?\d*)\s*x/i);
+            if (quantityMatch) {
+                quantity = quantityMatch[1].replace(',', '.');
+                console.log(`🔍 Znaleziona ilość: ${quantity} z tekstu: "${line}"`);
                 
-            } catch (error) {
-                hideLoading();
-                showError('Błąd podczas analizowania obrazu: ' + error.message);
+                // Wyodrębnij nazwę produktu - wszystko przed pierwszą cyfrą z "x"
+                const beforeQuantity = line.split(/\d+[,.]?\d*\s*x/i)[0];
+                productName = beforeQuantity
+                    .replace(/\s+[A-Z]\s*$/, '')  // usuń literę na końcu (C, A, B)
+                    .trim();
+                
+                console.log(`🔍 Nazwa produktu: "${productName}"`);
+                
+                // Określ jednostkę na podstawie nazwy produktu i ilości
+                const lowerName = productName.toLowerCase();
+                const quantityNum = parseFloat(quantity);
+                
+                if (lowerName.includes('l') || lowerName.includes('ml')) {
+                    unit = quantityNum === 1 ? 'szt' : 'szt'; // butelki/puszki
+                } else if (lowerName.includes('kg') || lowerName.includes('g')) {
+                    unit = 'szt'; // opakowania
+                } else if (quantityNum < 1.0 && quantityNum > 0) {
+                    unit = 'kg'; // prawdopodobnie waga
+                } else {
+                    unit = 'szt'; // sztuki/opakowania
+                }
+            }
+            // Fallback: jeśli nie ma "x", spróbuj znaleźć jednostki w nazwie
+            else {
+                const weightMatch = line.match(/(\d+[,\.]\d*)\s*(kg|g|szt|l|ml|op)/i);
+                if (weightMatch) {
+                    quantity = weightMatch[1].replace(',', '.');
+                    unit = weightMatch[2].toLowerCase();
+                }
+                
+                // Wyodrębniamy nazwę produktu (usuń ceny z końca)
+                productName = line
+                    .replace(/\d+[,\.]\d*\s*(kg|g|szt|l|ml|op).*/, '')
+                    .replace(/\s*\d+[,\.]\d{2}.*/, '')
+                    .replace(/\s+[A-Z]\s*$/, '')  // usuń literę na końcu
+                    .trim();
+                
+                console.log(`🔍 Fallback - nazwa: "${productName}", ilość: ${quantity}`);
+            }
+            
+            const decodedName = decodeProductName(productName, detectedStore);
+            
+            // Formatujemy ilość ładnie
+            const formattedQuantity = formatQuantity(quantity, unit);
+            
+            return {
+                original: productName,
+                decoded: decodedName,
+                quantity: formattedQuantity,
+                rawQuantity: quantity,
+                unit: unit,
+                store: detectedStore,
+                line: line
+            };
+        }
+        
+        function formatQuantity(quantity, unit) {
+            const num = parseFloat(quantity);
+            
+            switch(unit) {
+                case 'kg':
+                    if (num < 1) {
+                        return `${(num * 1000).toFixed(0)}g`;
+                    }
+                    return `${num.toFixed(3)}kg`;
+                case 'g':
+                    return `${num.toFixed(0)}g`;
+                case 'l':
+                    if (num < 1) {
+                        return `${(num * 1000).toFixed(0)}ml`;
+                    }
+                    return `${num.toFixed(2)}l`;
+                case 'ml':
+                    return `${num.toFixed(0)}ml`;
+                case 'szt':
+                    return num === 1 ? '1 sztuka' : `${num.toFixed(0)} sztuk`;
+                case 'op':
+                    return `${num.toFixed(0)} opakowanie`;
+                default:
+                    return `${quantity} ${unit}`;
             }
         }
 
-        // ============= UI FUNCTIONS =============
+        // Algorytm Levenshtein distance dla fuzzy matching
+        function levenshteinDistance(str1, str2) {
+            const matrix = [];
+            
+            // Inicjalizacja macierzy
+            for (let i = 0; i <= str2.length; i++) {
+                matrix[i] = [i];
+            }
+            for (let j = 0; j <= str1.length; j++) {
+                matrix[0][j] = j;
+            }
+            
+            // Wypełnienie macierzy
+            for (let i = 1; i <= str2.length; i++) {
+                for (let j = 1; j <= str1.length; j++) {
+                    if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j - 1] + 1, // zamiana
+                            matrix[i][j - 1] + 1,     // wstawienie
+                            matrix[i - 1][j] + 1      // usunięcie
+                        );
+                    }
+                }
+            }
+            
+            return matrix[str2.length][str1.length];
+        }
+
+        // Oblicz podobieństwo procentowe
+        function calculateSimilarity(str1, str2) {
+            const maxLength = Math.max(str1.length, str2.length);
+            if (maxLength === 0) return 100;
+            
+            const distance = levenshteinDistance(str1.toLowerCase(), str2.toLowerCase());
+            return ((maxLength - distance) / maxLength) * 100;
+        }
+
+        // Poprawa błędów OCR - typowe pomyłki
+        function fixOCRErrors(text) {
+            return text
+                .replace(/0/g, 'O')     // 0 -> O
+                .replace(/1/g, 'l')     // 1 -> l  
+                .replace(/5/g, 'S')     // 5 -> S
+                .replace(/8/g, 'B')     // 8 -> B
+                .replace(/rn/g, 'm')    // rn -> m
+                .replace(/vv/g, 'w')    // vv -> w
+                .replace(/\|/g, 'l')    // | -> l
+                .replace(/\s+/g, '');   // usuń spacje
+        }
+
+        // Znajdź najlepsze dopasowanie z tolerancją
+        function findBestMatch(productName, shortcuts, tolerance = 60) {
+            let bestMatch = null;
+            let bestSimilarity = 0;
+            let bestShortcut = '';
+            
+            // Normalizuj nazwę produktu
+            const normalizedProduct = fixOCRErrors(productName).toLowerCase();
+            
+            for (let [shortcut, fullName] of Object.entries(shortcuts)) {
+                const normalizedShortcut = fixOCRErrors(shortcut).toLowerCase();
+                
+                // Sprawdź czy shortcut zawiera się w produkcie lub na odwrót
+                if (normalizedProduct.includes(normalizedShortcut) || 
+                    normalizedShortcut.includes(normalizedProduct)) {
+                    
+                    const similarity = calculateSimilarity(normalizedProduct, normalizedShortcut);
+                    
+                    if (similarity >= tolerance && similarity > bestSimilarity) {
+                        bestMatch = fullName;
+                        bestSimilarity = similarity;
+                        bestShortcut = shortcut;
+                    }
+                }
+                
+                // Sprawdź też fragmenty (min 4 znaki)
+                if (shortcut.length >= 4) {
+                    for (let i = 0; i <= normalizedProduct.length - 4; i++) {
+                        const fragment = normalizedProduct.substring(i, i + shortcut.length);
+                        const similarity = calculateSimilarity(fragment, normalizedShortcut);
+                        
+                        if (similarity >= tolerance && similarity > bestSimilarity) {
+                            bestMatch = fullName;
+                            bestSimilarity = similarity;
+                            bestShortcut = shortcut;
+                        }
+                    }
+                }
+            }
+            
+            return bestMatch ? {
+                match: bestMatch,
+                similarity: bestSimilarity,
+                shortcut: bestShortcut
+            } : null;
+        }
+
+        function detectStore(receiptText) {
+            const text = receiptText.toLowerCase();
+            
+            // Wykryj sklep na podstawie tekstu paragonu
+            if (text.includes('biedronka')) return 'biedronka';
+            if (text.includes('żabka') || text.includes('zabka')) return 'zabka';
+            if (text.includes('kaufland')) return 'kaufland';
+            if (text.includes('lidl')) return 'lidl';
+            if (text.includes('tesco')) return 'tesco';
+            if (text.includes('carrefour')) return 'carrefour';
+            
+            // Spróbuj wykryć na podstawie wzorców produktów
+            if (!productDatabase.common_patterns) return 'general';
+            
+            const patterns = productDatabase.common_patterns.store_patterns;
+            
+            for (const [store, indicators] of Object.entries(patterns)) {
+                for (const indicator of indicators) {
+                    if (text.includes(indicator.toLowerCase())) {
+                        return store.replace('_indicators', '');
+                    }
+                }
+            }
+            
+            return 'general'; // domyślnie ogólne skróty
+        }
+
+        function decodeProductName(name, detectedStore = 'general') {
+            if (!databaseLoaded) {
+                return name + ' (baza danych nie załadowana)';
+            }
+            
+            let decoded = name;
+            let foundMatch = false;
+            let bestSimilarity = 0;
+            let matchDetails = [];
+            
+            // Konfiguracja tolerancji - można dostosować
+            const tolerance = 60; // 60% podobieństwa (było 75%)
+            
+            // Najpierw spróbuj ze sklepem-specific skrótami
+            if (detectedStore !== 'general' && productDatabase.stores[detectedStore]) {
+                const storeShortcuts = productDatabase.stores[detectedStore].shortcuts;
+                
+                const storeMatch = findBestMatch(name, storeShortcuts, tolerance);
+                if (storeMatch && storeMatch.similarity > bestSimilarity) {
+                    decoded = storeMatch.match;
+                    bestSimilarity = storeMatch.similarity;
+                    foundMatch = true;
+                    matchDetails.push(`${storeMatch.shortcut} (${Math.round(storeMatch.similarity)}%)`);
+                }
+            }
+            
+            // Potem spróbuj z ogólnymi skrótami
+            if (productDatabase.general_shortcuts && productDatabase.general_shortcuts.shortcuts) {
+                const generalMatch = findBestMatch(name, productDatabase.general_shortcuts.shortcuts, tolerance);
+                if (generalMatch && generalMatch.similarity > bestSimilarity) {
+                    decoded = generalMatch.match;
+                    bestSimilarity = generalMatch.similarity;
+                    foundMatch = true;
+                    matchDetails.push(`${generalMatch.shortcut} (${Math.round(generalMatch.similarity)}%)`);
+                }
+            }
+            
+            // Jeśli nie znaleziono fuzzy match, spróbuj tradycyjnego includes
+            if (!foundMatch) {
+                // Sklepowe skróty
+                if (detectedStore !== 'general' && productDatabase.stores[detectedStore]) {
+                    const storeShortcuts = productDatabase.stores[detectedStore].shortcuts;
+                    
+                    for (let [shortcut, fullName] of Object.entries(storeShortcuts)) {
+                        if (name.includes(shortcut)) {
+                            decoded = decoded.replace(shortcut, fullName);
+                            foundMatch = true;
+                            matchDetails.push(`${shortcut} (dokładne)`);
+                        }
+                    }
+                }
+                
+                // Ogólne skróty
+                if (productDatabase.general_shortcuts && productDatabase.general_shortcuts.shortcuts) {
+                    for (let [shortcut, fullName] of Object.entries(productDatabase.general_shortcuts.shortcuts)) {
+                        if (name.includes(shortcut)) {
+                            decoded = decoded.replace(shortcut, fullName);
+                            foundMatch = true;
+                            matchDetails.push(`${shortcut} (dokładne)`);
+                        }
+                    }
+                }
+            }
+            
+            // Podstawowe zamienniki
+            decoded = decoded
+                .replace(/VFr\d+/, 'VitaFresh')
+                .replace(/\d+g/, ' (opakowanie)')
+                .replace(/\d+ml/, 'ml')
+                .replace(/\d+l/, 'l')
+                .replace(/kg/, ' (za kilogram)')
+                .replace(/szt/, ' (sztuka)')
+                .replace(/op/, ' (opakowanie)');
+            
+            // Dodaj informacje o dopasowaniu
+            let result = decoded;
+            
+            if (foundMatch) {
+                if (detectedStore !== 'general') {
+                    const storeName = productDatabase.stores[detectedStore]?.name || detectedStore;
+                    result = `${decoded} [${storeName}]`;
+                }
+                
+                // Dodaj info o podobieństwie jeśli nie było dokładne
+                if (bestSimilarity > 0 && bestSimilarity < 100) {
+                    result += ` ~${Math.round(bestSimilarity)}%`;
+                }
+                
+                // Debug info w konsoli
+                console.log(`🔍 Dopasowanie: "${name}" → "${decoded}" (${matchDetails.join(', ')})`);
+            } else {
+                result = name + ' (nie rozpoznano)';
+                console.log(`❌ Nie rozpoznano: "${name}"`);
+            }
+            
+            return result;
+        }
+
+        function displayResults(products, detectedStore = 'general') {
+            // UKRYJ nie rozpoznane produkty
+            const recognizedProducts = products.filter(p => !p.decoded.includes('(nie rozpoznano)'));
+            
+            if (recognizedProducts.length === 0) {
+                results.innerHTML = '<div class="error">Nie znaleziono rozpoznanych produktów na paragonie. Spróbuj z lepszym zdjęciem lub dodaj skróty do bazy danych.</div>';
+                return;
+            }
+            
+            // Informacja o wykrytym sklepie
+            const storeName = detectedStore !== 'general' && productDatabase.stores[detectedStore] 
+                ? productDatabase.stores[detectedStore].name 
+                : 'Ogólny';
+            
+            // Policz statystyki
+            const totalProducts = products.length;
+            const recognizedCount = recognizedProducts.length;
+            const fuzzyMatches = recognizedProducts.filter(p => p.decoded.includes('~'));
+            const notRecognizedCount = totalProducts - recognizedCount;
+            
+            let html = `
+                <div style="background: #e8f5e8; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                    <strong>🏪 Wykryty sklep:</strong> ${storeName}<br>
+                    <strong>🛒 Produkty na paragonie:</strong> ${totalProducts}<br>
+                    <strong>✅ Rozpoznane i pokazane:</strong> ${recognizedCount}<br>
+                    <strong>🔍 Dopasowania przybliżone:</strong> ${fuzzyMatches.length}
+                    ${notRecognizedCount > 0 ? `<br><strong>❌ Ukryte (nie rozpoznane):</strong> ${notRecognizedCount}` : ''}
+                </div>
+                <h3>📋 Rozpoznane produkty:</h3>
+            `;
+            
+            recognizedProducts.forEach((product, index) => {
+                // Dodajemy ikonę odpowiednią do jednostki
+                let icon = '📦';
+                if (product.unit === 'kg' || product.unit === 'g') icon = '⚖️';
+                if (product.unit === 'l' || product.unit === 'ml') icon = '🥤';
+                if (product.unit === 'szt') icon = '🔢';
+                
+                // Sprawdź czy to fuzzy match
+                const isFuzzyMatch = product.decoded.includes('~');
+                
+                let productClass = 'product-item';
+                if (isFuzzyMatch) productClass += ' fuzzy-match';
+                
+                html += `
+                    <div class="${productClass}">
+                        <div class="product-original">Oryginalny tekst: ${product.original}</div>
+                        <div class="product-decoded">${icon} ${product.decoded}</div>
+                        <div class="quantity">📏 Ilość: <strong>${product.quantity}</strong></div>
+                    </div>
+                `;
+            });
+            
+            // Informacja o bazie danych i systemie dopasowania
+            const dbInfo = databaseLoaded && productDatabase.metadata 
+                ? `v${productDatabase.metadata.version} (${productDatabase.metadata.last_updated})`
+                : 'podstawowa';
+                
+            html += `
+                <div style="margin-top: 20px; padding: 15px; background: #f0f8ff; border-radius: 5px;">
+                    <strong>💡 System inteligentnego dopasowania:</strong><br>
+                    • <strong>Dokładne dopasowanie:</strong> szuka exact match w bazie<br>
+                    • <strong>Fuzzy matching:</strong> tolerancja 60% podobieństwa (błędy OCR)<br>
+                    • <strong>Format Biedronki:</strong> rozpoznaje "nazwa C ilość x cena"<br>
+                    • Baza danych: ${dbInfo}<br>
+                    • Szczegóły dopasowań w konsoli przeglądarki (F12)
+                </div>
+                
+                <div style="margin-top: 15px; padding: 15px; background: #fff3cd; border-radius: 5px;">
+                    <strong>🎯 Jak zwiększyć rozpoznawalność:</strong><br>
+                    1. Edytuj plik <code>product-database.json</code><br>
+                    2. Dodaj skróty nierozpoznanych produktów do sekcji "${detectedStore}"<br>
+                    3. Format: <code>"SkrotZParagonu": "Pełna nazwa produktu"</code><br>
+                    4. System automatycznie znajdzie podobne zapisy przy następnym skanie
+                </div>
+            `;
+            
+            results.innerHTML = html;
+        }
+
         function showLoading() {
             loadingDiv.style.display = 'block';
             progressBar.style.display = 'block';
@@ -1266,62 +1081,6 @@ ODPOWIEDZ TYLKO W FORMACIE JSON (bez dodatkowego tekstu):
         function showError(message) {
             results.innerHTML = `<div class="error">❌ ${message}</div>`;
         }
-
-        // ============= EVENT LISTENERS =============
-        uploadSection.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadSection.classList.add('dragover');
-        });
-
-        uploadSection.addEventListener('dragleave', () => {
-            uploadSection.classList.remove('dragover');
-        });
-
-        uploadSection.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadSection.classList.remove('dragover');
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                handleFile(files[0]);
-            }
-        });
-
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                handleFile(e.target.files[0]);
-            }
-        });
-
-        // ============= INITIALIZATION =============
-        window.addEventListener('load', async () => {
-            console.log('🚀 Ładowanie aplikacji...');
-            
-            const dbLoaded = await loadProductDatabase();
-            if (dbLoaded) {
-                console.log('✅ Baza danych załadowana pomyślnie');
-            } else {
-                console.log('⚠️ Używam podstawowej bazy danych');
-            }
-            
-            try {
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                const videoDevices = devices.filter(device => device.kind === 'videoinput');
-                
-                if (videoDevices.length === 0) {
-                    console.warn('Brak dostępnych kamer');
-                    const cameraBtn = document.querySelector('button[onclick="startCamera()"]');
-                    if (cameraBtn) {
-                        cameraBtn.style.display = 'none';
-                    }
-                } else {
-                    console.log(`Znaleziono ${videoDevices.length} kamer`);
-                }
-            } catch (error) {
-                console.warn('Nie można sprawdzić dostępności kamer:', error);
-            }
-            
-            console.log('🧠 Aplikacja gotowa - OCR + Claude AI Vision!');
-        });
     </script>
 </body>
 </html>
