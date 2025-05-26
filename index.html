@@ -669,14 +669,20 @@
             let unit = 'szt';
             let productName = line;
             
-            // GŁÓWNY WZORZEC BIEDRONKI: "nazwa C ilość x cena"
-            // Przykład: "KubusPlay0,4l C 2 x2,99 5,98"
-            const biedronkaMatch = line.match(/^(.+?)\s+([A-Z])\s+(\d+[,.]?\d*)\s+x\s+(\d+[,\.]\d{2})/);
-            if (biedronkaMatch) {
-                productName = biedronkaMatch[1].trim();  // "KubusPlay0,4l"
-                quantity = biedronkaMatch[3].replace(',', '.');  // "2"
+            // UNIWERSALNY WZORZEC: znajdź cyfrę przed "x" gdziekolwiek w linii
+            // Przykłady: "2 x", "4x", "0,876 x", "1.5x"
+            const quantityMatch = line.match(/(\d+[,.]?\d*)\s*x/i);
+            if (quantityMatch) {
+                quantity = quantityMatch[1].replace(',', '.');
+                console.log(`🔍 Znaleziona ilość: ${quantity} z tekstu: "${line}"`);
                 
-                console.log(`🔍 Biedronka format: "${productName}" ilość: ${quantity}`);
+                // Wyodrębnij nazwę produktu - wszystko przed pierwszą cyfrą z "x"
+                const beforeQuantity = line.split(/\d+[,.]?\d*\s*x/i)[0];
+                productName = beforeQuantity
+                    .replace(/\s+[A-Z]\s*$/, '')  // usuń literę na końcu (C, A, B)
+                    .trim();
+                
+                console.log(`🔍 Nazwa produktu: "${productName}"`);
                 
                 // Określ jednostkę na podstawie nazwy produktu i ilości
                 const lowerName = productName.toLowerCase();
@@ -692,41 +698,22 @@
                     unit = 'szt'; // sztuki/opakowania
                 }
             }
-            // Fallback: inne formaty paragonów
+            // Fallback: jeśli nie ma "x", spróbuj znaleźć jednostki w nazwie
             else {
-                // Szukamy wzorca: liczba x cena (inne sklepy)
-                const quantityXMatch = line.match(/([A-Z]\s*)?(\d+[,\.]\d*)\s*x\s*(\d+[,\.]\d{2})/);
-                if (quantityXMatch) {
-                    quantity = quantityXMatch[2].replace(',', '.');
-                    
-                    // Określamy jednostkę na podstawie kontekstu
-                    if (parseFloat(quantity) < 1.0 && parseFloat(quantity) > 0) {
-                        unit = 'kg'; // prawdopodobnie waga
-                    } else if (parseFloat(quantity) > 10) {
-                        unit = 'g'; // prawdopodobnie gramy
-                    } else {
-                        unit = 'szt'; // sztuki
-                    }
-                    
-                    // Wyodrębniamy nazwę produktu (wszystko przed ilością)
-                    productName = line
-                        .replace(/[A-Z]\s*\d+[,\.]\d*\s*x.*/, '')
-                        .trim();
-                } 
-                // Szukamy wzorca: liczba kg/g/szt w nazwie
-                else {
-                    const weightMatch = line.match(/(\d+[,\.]\d*)\s*(kg|g|szt|l|ml|op)/i);
-                    if (weightMatch) {
-                        quantity = weightMatch[1].replace(',', '.');
-                        unit = weightMatch[2].toLowerCase();
-                    }
-                    
-                    // Wyodrębniamy nazwę produktu (usuń ceny z końca)
-                    productName = line
-                        .replace(/\d+[,\.]\d*\s*(kg|g|szt|l|ml|op).*/, '')
-                        .replace(/\s*\d+[,\.]\d{2}.*/, '')
-                        .trim();
+                const weightMatch = line.match(/(\d+[,\.]\d*)\s*(kg|g|szt|l|ml|op)/i);
+                if (weightMatch) {
+                    quantity = weightMatch[1].replace(',', '.');
+                    unit = weightMatch[2].toLowerCase();
                 }
+                
+                // Wyodrębniamy nazwę produktu (usuń ceny z końca)
+                productName = line
+                    .replace(/\d+[,\.]\d*\s*(kg|g|szt|l|ml|op).*/, '')
+                    .replace(/\s*\d+[,\.]\d{2}.*/, '')
+                    .replace(/\s+[A-Z]\s*$/, '')  // usuń literę na końcu
+                    .trim();
+                
+                console.log(`🔍 Fallback - nazwa: "${productName}", ilość: ${quantity}`);
             }
             
             const decodedName = decodeProductName(productName, detectedStore);
