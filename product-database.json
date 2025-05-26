@@ -1,1 +1,129 @@
-
+{
+  "metadata": {
+    "version": "1.1",
+    "last_updated": "2025-05-26",
+    "description": "Baza skrótów produktów z polskich sklepów - rozszerzona o prawdziwe dane z paragonów",
+    "contributors": ["Claude", "Użytkownicy", "Paragon Biedronka 364749"]
+  },
+  
+  "stores": {
+    "biedronka": {
+      "name": "Biedronka",
+      "shortcuts": {
+        "SchWpB": "Schab wieprzowy bez kości",
+        "SmothOwTro": "Smoothie owocowe tropikalne",
+        "SmothOwTroVFr": "Smoothie owocowe tropikalne VitaFresh",
+        "PapieToalet": "Papier toaletowy",
+        "PapieToaletQueen": "Papier toaletowy Queen",
+        "ButkaKajzerka": "Bułka kajzerka",
+        "Butka": "Bułka",
+        "BulkaZytnia": "Bułka żytnia",
+        "Żytnia": "żytnia",
+        "Kajzerka": "kajzerka",
+        
+        "_comment_nowe_z_paragonu": "--- Nowe skróty z paragonu nr 364749 ---",
+        "KubusPLayJabMal": "Kubuś Play Malina",
+        "MakarKonjFettAsi": "Makaron Konjak",
+        "KabanGryzTarczy": "Kabanosy Gryzalle Tarczyński",
+        "SosSałatkGrecKnorr": "Sos sałatkowy grecki Knorr",
+        "PalusSurimiVic": "Paluszki surimi Vici",
+        "SerekKlasDelik": "Serek klasyczny delikatny",
+        "Parów Sokol": "Parówki Sokoliki",
+        "OgorekSzkLuz": "Ogórki szklarniowe",
+        "Herb Minutka": "Herbata Minutka",
+        "RyżSushiAsia": "Ryż do sushi Asia",
+        "cukier trzc": "Cukier trzcinowy",
+        "Sol": "Sól",
+        "Culineo": "Culineo",
+        "MajoneMadWolnMy": "Majonez Madej wolny od glutenu",
+        "Serek wiejski": "Serek",
+        "FrytZigZag": "Frytki Zig Zag",
+        "łoś": "Łosoś",
+        "rodz": "rodzinna",
+        "por": "porcja",
+        "Łos rodz por": "Łosoś porcja rodzinna"
+        "TostSzynSer": "Toast szynka ser"
+      }
+    },
+    
+    "zabka": {
+      "name": "Żabka",
+      "shortcuts": {
+        "CocaCola": "Coca-Cola",
+        "RedBull": "Red Bull Energy Drink",
+        "Snickers": "Snickers baton",
+        "KitKat": "Kit Kat wafel",
+        "Marlboro": "Marlboro papierosy",
+        "Haribo": "Haribo żelki",
+        "Lays": "Lay's chipsy",
+        "Pepsi": "Pepsi Cola"
+      }
+    },
+    
+    "kaufland": {
+      "name": "Kaufland",
+      "shortcuts": {
+        "KChlebTost": "K-Classic Chleb tostowy",
+        "KMasło": "K-Classic Masło",
+        "KMleko": "K-Classic Mleko",
+        "KJogurt": "K-Classic Jogurt naturalny",
+        "KSer": "K-Classic Ser",
+        "KClassic": "K-Classic"
+      }
+    },
+    
+    "lidl": {
+      "name": "Lidl",
+      "shortcuts": {
+        "Pilos": "Pilos (marka własna)",
+        "Crivit": "Crivit (odzież sportowa)",
+        "Parkside": "Parkside (narzędzia)",
+        "Dulano": "Dulano (wędliny)",
+        "Milbona": "Milbona (nabiał)",
+        "Vitakraft": "Vitakraft",
+        "Combino": "Combino (przekąski)"
+      }
+    },
+    
+    "tesco": {
+      "name": "Tesco",
+      "shortcuts": {
+        "TescoVal": "Tesco Value",
+        "TescoFin": "Tesco Finest",
+        "TescoFr": "Tesco Free From",
+        "TescoBio": "Tesco Bio Organic"
+      }
+    },
+    
+    "carrefour": {
+      "name": "Carrefour",
+      "shortcuts": {
+        "CarrRef": "Carrefour (marka własna)",
+        "CarrEco": "Carrefour Eco Planet",
+        "CarrBio": "Carrefour Bio",
+        "CarrNum1": "Carrefour No1"
+      }
+    }
+  },
+  
+  "common_patterns": {
+    "description": "Wzorce skrótów do automatycznego rozpoznawania",
+    "weight_indicators": ["kg", "g", "0.876", "1.0", "2.5", "0,5", "1,2", "0,9"],
+    "volume_indicators": ["l", "ml", "0.75", "1.5", "2.0", "10,4", "400", "500"],
+    "quantity_indicators": ["szt", "op", "pacz", "x", "t", "torebek"],
+    "store_patterns": {
+      "biedronka_indicators": ["Kubus", "Sch", "Sm", "VFr", "Queen", "Palus", "Serek", "Fryt"],
+      "lidl_indicators": ["Pilos", "Crivit", "Park", "Dul"],
+      "kaufland_indicators": ["K-", "KClass", "KMark"]
+    },
+    "product_categories": {
+      "napoje": ["Kubus", "Sok", "Woda", "Piwo"],
+      "nabiał": ["Mleko", "Ser", "Jogurt", "Masło"],
+      "mięso": ["Sch", "Szynka", "Kiełbasa", "łoś"],
+      "makaron_ryż": ["Makar", "Ryż", "Makaron"],
+      "słodycze": ["Czekolada", "Ciastka"],
+      "warzywa": ["Pomidor", "Ogórek", "Marchew"],
+      "pieczywo": ["Chleb", "Butka", "Toast"]
+    }
+  }
+}
