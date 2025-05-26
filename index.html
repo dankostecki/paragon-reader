@@ -206,15 +206,20 @@
                         📁 Wybierz plik
                     </button>
                 </div>
+                <p style="margin-top: 10px; font-size: 0.9rem; color: #777;">
+                    💡 Kamera wymaga uprawnień i HTTPS
+                </p>
                 <input type="file" id="fileInput" class="file-input" accept="image/*,.pdf">
             </div>
             
             <div class="camera-section" id="cameraSection" style="display: none;">
-                <video id="cameraVideo" autoplay playsinline style="width: 100%; max-width: 400px; border-radius: 10px;"></video>
+                <h4>📷 Pozycjonuj paragon w kadrze</h4>
+                <video id="cameraVideo" autoplay playsinline style="width: 100%; max-width: 400px; border-radius: 10px; background: #000;"></video>
                 <div style="margin: 15px 0;">
                     <button class="upload-btn" onclick="capturePhoto()">📷 Zrób zdjęcie</button>
                     <button class="upload-btn" onclick="stopCamera()" style="background: #dc3545; margin-left: 10px;">❌ Anuluj</button>
                 </div>
+                <p style="font-size: 0.9rem; color: #666;">Ustaw paragon w dobrym świetle, bez odbić</p>
                 <canvas id="captureCanvas" style="display: none;"></canvas>
             </div>
             
@@ -359,42 +364,106 @@
         // Funkcje kamery
         async function startCamera() {
             try {
-                cameraStream = await navigator.mediaDevices.getUserMedia({ 
+                // Sprawdź czy urządzenie obsługuje kamerę
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('Twoja przeglądarka nie obsługuje kamery');
+                }
+
+                // Pierwsze spróbuj z kamerą tylną
+                let constraints = { 
                     video: { 
-                        facingMode: 'environment', // kamera tylna na telefonie
+                        facingMode: 'environment',
                         width: { ideal: 1280 },
                         height: { ideal: 720 }
                     } 
-                });
+                };
+
+                try {
+                    cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+                } catch (envError) {
+                    // Jeśli kamera tylna nie działa, spróbuj z dowolną kamerą
+                    console.log('Kamera tylna niedostępna, próbuję z przednią:', envError.message);
+                    constraints = { 
+                        video: { 
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        } 
+                    };
+                    cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+                }
                 
                 cameraVideo.srcObject = cameraStream;
-                cameraSection.style.display = 'block';
-                uploadSection.style.display = 'none';
+                
+                // Poczekaj aż video się załaduje
+                cameraVideo.onloadedmetadata = () => {
+                    cameraVideo.play();
+                    cameraSection.style.display = 'block';
+                    uploadSection.style.display = 'none';
+                };
                 
             } catch (error) {
-                showError('Nie można uruchomić kamery: ' + error.message + '. Sprawdź uprawnienia.');
+                console.error('Błąd kamery:', error);
+                let errorMessage = 'Nie można uruchomić kamery';
+                
+                if (error.name === 'NotAllowedError') {
+                    errorMessage = 'Odmówiono dostępu do kamery. Sprawdź uprawnienia w przeglądarce.';
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage = 'Nie znaleziono kamery na tym urządzeniu.';
+                } else if (error.name === 'NotSupportedError') {
+                    errorMessage = 'Kamera nie jest obsługiwana przez tę przeglądarkę.';
+                } else if (error.message.includes('https')) {
+                    errorMessage = 'Kamera wymaga bezpiecznego połączenia (HTTPS).';
+                } else {
+                    errorMessage += ': ' + error.message;
+                }
+                
+                showError(errorMessage);
             }
         }
 
         function capturePhoto() {
-            const canvas = captureCanvas;
-            const video = cameraVideo;
-            
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
-            // Konwertujemy na obraz i pokazujemy podgląd
-            canvas.toBlob((blob) => {
-                const url = URL.createObjectURL(blob);
-                previewImage.src = url;
-                previewContainer.style.display = 'block';
+            try {
+                const canvas = captureCanvas;
+                const video = cameraVideo;
                 
-                stopCamera();
-                processImageFromCanvas(canvas);
-            }, 'image/jpeg', 0.95);
+                // Sprawdź czy video jest gotowe
+                if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+                    showError('Kamera jeszcze się ładuje. Spróbuj ponownie za chwilę.');
+                    return;
+                }
+                
+                // Ustaw rozmiar canvas na podstawie video
+                canvas.width = video.videoWidth || 1280;
+                canvas.height = video.videoHeight || 720;
+                
+                console.log('Rozmiar zdjęcia:', canvas.width, 'x', canvas.height);
+                
+                const ctx = canvas.getContext('2d');
+                
+                // Narysuj ramkę z video na canvas
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Konwertuj na blob i pokaż podgląd
+                canvas.toBlob((blob) => {
+                    if (!blob) {
+                        showError('Nie udało się przechwycić zdjęcia. Spróbuj ponownie.');
+                        return;
+                    }
+                    
+                    const url = URL.createObjectURL(blob);
+                    previewImage.src = url;
+                    previewContainer.style.display = 'block';
+                    
+                    console.log('Zdjęcie przechwycone, rozmiar blob:', blob.size, 'bajtów');
+                    
+                    stopCamera();
+                    processImageFromCanvas(canvas);
+                }, 'image/jpeg', 0.95);
+                
+            } catch (error) {
+                console.error('Błąd podczas robienia zdjęcia:', error);
+                showError('Błąd podczas robienia zdjęcia: ' + error.message);
+            }
         }
 
         function stopCamera() {
@@ -403,9 +472,31 @@
                 cameraStream = null;
             }
             
+            cameraVideo.srcObject = null;
             cameraSection.style.display = 'none';
             uploadSection.style.display = 'block';
         }
+
+        // Sprawdź dostępność kamery przy załadowaniu strony
+        window.addEventListener('load', async () => {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                
+                if (videoDevices.length === 0) {
+                    console.warn('Brak dostępnych kamer');
+                    // Ukryj przycisk kamery jeśli nie ma kamer
+                    const cameraBtn = document.querySelector('button[onclick="startCamera()"]');
+                    if (cameraBtn) {
+                        cameraBtn.style.display = 'none';
+                    }
+                } else {
+                    console.log(`Znaleziono ${videoDevices.length} kamer:`, videoDevices);
+                }
+            } catch (error) {
+                console.warn('Nie można sprawdzić dostępności kamer:', error);
+            }
+        });
 
         function handleFile(file) {
             if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
