@@ -140,6 +140,16 @@
             border-radius: 5px;
         }
         
+        .product-item.fuzzy-match {
+            background: #fff9e6;
+            border-left-color: #ffa500;
+        }
+        
+        .product-item.not-recognized {
+            background: #ffebee;
+            border-left-color: #f44336;
+        }
+        
         .product-original {
             font-family: monospace;
             color: #666;
@@ -704,7 +714,104 @@
             }
         }
 
-        function detectStore(receiptText) {
+        // Algorytm Levenshtein distance dla fuzzy matching
+        function levenshteinDistance(str1, str2) {
+            const matrix = [];
+            
+            // Inicjalizacja macierzy
+            for (let i = 0; i <= str2.length; i++) {
+                matrix[i] = [i];
+            }
+            for (let j = 0; j <= str1.length; j++) {
+                matrix[0][j] = j;
+            }
+            
+            // Wypełnienie macierzy
+            for (let i = 1; i <= str2.length; i++) {
+                for (let j = 1; j <= str1.length; j++) {
+                    if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j - 1] + 1, // zamiana
+                            matrix[i][j - 1] + 1,     // wstawienie
+                            matrix[i - 1][j] + 1      // usunięcie
+                        );
+                    }
+                }
+            }
+            
+            return matrix[str2.length][str1.length];
+        }
+
+        // Oblicz podobieństwo procentowe
+        function calculateSimilarity(str1, str2) {
+            const maxLength = Math.max(str1.length, str2.length);
+            if (maxLength === 0) return 100;
+            
+            const distance = levenshteinDistance(str1.toLowerCase(), str2.toLowerCase());
+            return ((maxLength - distance) / maxLength) * 100;
+        }
+
+        // Poprawa błędów OCR - typowe pomyłki
+        function fixOCRErrors(text) {
+            return text
+                .replace(/0/g, 'O')     // 0 -> O
+                .replace(/1/g, 'l')     // 1 -> l  
+                .replace(/5/g, 'S')     // 5 -> S
+                .replace(/8/g, 'B')     // 8 -> B
+                .replace(/rn/g, 'm')    // rn -> m
+                .replace(/vv/g, 'w')    // vv -> w
+                .replace(/\|/g, 'l')    // | -> l
+                .replace(/\s+/g, '');   // usuń spacje
+        }
+
+        // Znajdź najlepsze dopasowanie z tolerancją
+        function findBestMatch(productName, shortcuts, tolerance = 80) {
+            let bestMatch = null;
+            let bestSimilarity = 0;
+            let bestShortcut = '';
+            
+            // Normalizuj nazwę produktu
+            const normalizedProduct = fixOCRErrors(productName).toLowerCase();
+            
+            for (let [shortcut, fullName] of Object.entries(shortcuts)) {
+                const normalizedShortcut = fixOCRErrors(shortcut).toLowerCase();
+                
+                // Sprawdź czy shortcut zawiera się w produkcie lub na odwrót
+                if (normalizedProduct.includes(normalizedShortcut) || 
+                    normalizedShortcut.includes(normalizedProduct)) {
+                    
+                    const similarity = calculateSimilarity(normalizedProduct, normalizedShortcut);
+                    
+                    if (similarity >= tolerance && similarity > bestSimilarity) {
+                        bestMatch = fullName;
+                        bestSimilarity = similarity;
+                        bestShortcut = shortcut;
+                    }
+                }
+                
+                // Sprawdź też fragmenty (min 4 znaki)
+                if (shortcut.length >= 4) {
+                    for (let i = 0; i <= normalizedProduct.length - 4; i++) {
+                        const fragment = normalizedProduct.substring(i, i + shortcut.length);
+                        const similarity = calculateSimilarity(fragment, normalizedShortcut);
+                        
+                        if (similarity >= tolerance && similarity > bestSimilarity) {
+                            bestMatch = fullName;
+                            bestSimilarity = similarity;
+                            bestShortcut = shortcut;
+                        }
+                    }
+                }
+            }
+            
+            return bestMatch ? {
+                match: bestMatch,
+                similarity: bestSimilarity,
+                shortcut: bestShortcut
+            } : null;
+        }
             const text = receiptText.toLowerCase();
             
             // Wykryj sklep na podstawie tekstu paragonu
@@ -738,25 +845,59 @@
             
             let decoded = name;
             let foundMatch = false;
+            let bestSimilarity = 0;
+            let matchDetails = [];
+            
+            // Konfiguracja tolerancji - można dostosować
+            const tolerance = 75; // 75% podobieństwa
             
             // Najpierw spróbuj ze sklepem-specific skrótami
             if (detectedStore !== 'general' && productDatabase.stores[detectedStore]) {
                 const storeShortcuts = productDatabase.stores[detectedStore].shortcuts;
                 
-                for (let [shortcut, fullName] of Object.entries(storeShortcuts)) {
-                    if (name.includes(shortcut)) {
-                        decoded = decoded.replace(shortcut, fullName);
-                        foundMatch = true;
-                    }
+                const storeMatch = findBestMatch(name, storeShortcuts, tolerance);
+                if (storeMatch && storeMatch.similarity > bestSimilarity) {
+                    decoded = storeMatch.match;
+                    bestSimilarity = storeMatch.similarity;
+                    foundMatch = true;
+                    matchDetails.push(`${storeMatch.shortcut} (${Math.round(storeMatch.similarity)}%)`);
                 }
             }
             
             // Potem spróbuj z ogólnymi skrótami
             if (productDatabase.general_shortcuts && productDatabase.general_shortcuts.shortcuts) {
-                for (let [shortcut, fullName] of Object.entries(productDatabase.general_shortcuts.shortcuts)) {
-                    if (name.includes(shortcut)) {
-                        decoded = decoded.replace(shortcut, fullName);
-                        foundMatch = true;
+                const generalMatch = findBestMatch(name, productDatabase.general_shortcuts.shortcuts, tolerance);
+                if (generalMatch && generalMatch.similarity > bestSimilarity) {
+                    decoded = generalMatch.match;
+                    bestSimilarity = generalMatch.similarity;
+                    foundMatch = true;
+                    matchDetails.push(`${generalMatch.shortcut} (${Math.round(generalMatch.similarity)}%)`);
+                }
+            }
+            
+            // Jeśli nie znaleziono fuzzy match, spróbuj tradycyjnego includes
+            if (!foundMatch) {
+                // Sklepowe skróty
+                if (detectedStore !== 'general' && productDatabase.stores[detectedStore]) {
+                    const storeShortcuts = productDatabase.stores[detectedStore].shortcuts;
+                    
+                    for (let [shortcut, fullName] of Object.entries(storeShortcuts)) {
+                        if (name.includes(shortcut)) {
+                            decoded = decoded.replace(shortcut, fullName);
+                            foundMatch = true;
+                            matchDetails.push(`${shortcut} (dokładne)`);
+                        }
+                    }
+                }
+                
+                // Ogólne skróty
+                if (productDatabase.general_shortcuts && productDatabase.general_shortcuts.shortcuts) {
+                    for (let [shortcut, fullName] of Object.entries(productDatabase.general_shortcuts.shortcuts)) {
+                        if (name.includes(shortcut)) {
+                            decoded = decoded.replace(shortcut, fullName);
+                            foundMatch = true;
+                            matchDetails.push(`${shortcut} (dokładne)`);
+                        }
                     }
                 }
             }
@@ -771,13 +912,28 @@
                 .replace(/szt/, ' (sztuka)')
                 .replace(/op/, ' (opakowanie)');
             
-            // Jeśli znaleziono dopasowanie, dodaj informację o sklepie
-            if (foundMatch && detectedStore !== 'general') {
-                const storeName = productDatabase.stores[detectedStore]?.name || detectedStore;
-                return `${decoded} [${storeName}]`;
+            // Dodaj informacje o dopasowaniu
+            let result = decoded;
+            
+            if (foundMatch) {
+                if (detectedStore !== 'general') {
+                    const storeName = productDatabase.stores[detectedStore]?.name || detectedStore;
+                    result = `${decoded} [${storeName}]`;
+                }
+                
+                // Dodaj info o podobieństwie jeśli nie było dokładne
+                if (bestSimilarity > 0 && bestSimilarity < 100) {
+                    result += ` ~${Math.round(bestSimilarity)}%`;
+                }
+                
+                // Debug info w konsoli
+                console.log(`🔍 Dopasowanie: "${name}" → "${decoded}" (${matchDetails.join(', ')})`);
+            } else {
+                result = name + ' (nie rozpoznano)';
+                console.log(`❌ Nie rozpoznano: "${name}"`);
             }
             
-            return foundMatch ? decoded : name + ' (nie rozpoznano)';
+            return result;
         }
 
         function displayResults(products, detectedStore = 'general') {
