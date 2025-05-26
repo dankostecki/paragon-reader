@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Czytnik Paragonów</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.0/tesseract.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .main-content {
+            padding: 30px;
+        }
+        
+        .upload-section {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-section:hover {
+            border-color: #764ba2;
+            background: #f8f9ff;
+        }
+        
+        .upload-section.dragover {
+            border-color: #764ba2;
+            background: #f0f0ff;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        
+        .upload-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .camera-section {
+            text-align: center;
+            background: #f8f9ff;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        #cameraVideo {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .preview-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .preview-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .results {
+            margin-top: 30px;
+        }
+        
+        .product-item {
+            background: #f8f9ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        
+        .product-original {
+            font-family: monospace;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .product-decoded {
+            font-weight: bold;
+            color: #333;
+            margin-top: 5px;
+        }
+        
+        .quantity {
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+        
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧾 Czytnik Paragonów</h1>
+            <p>Zrób zdjęcie, wgraj plik lub PDF paragonu, a ja rozszyfruję sklepowe skróty</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="upload-section" id="uploadSection">
+                <h3>Zrób zdjęcie, wybierz plik lub przeciągnij paragon</h3>
+                <p style="margin: 15px 0; color: #666;">Obsługuje: JPG, PNG, WebP, <strong>PDF</strong></p>
+                <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                    <button class="upload-btn" onclick="startCamera()">
+                        📸 Zrób zdjęcie
+                    </button>
+                    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                        📁 Wybierz plik
+                    </button>
+                </div>
+                <input type="file" id="fileInput" class="file-input" accept="image/*,.pdf">
+            </div>
+            
+            <div class="camera-section" id="cameraSection" style="display: none;">
+                <video id="cameraVideo" autoplay playsinline style="width: 100%; max-width: 400px; border-radius: 10px;"></video>
+                <div style="margin: 15px 0;">
+                    <button class="upload-btn" onclick="capturePhoto()">📷 Zrób zdjęcie</button>
+                    <button class="upload-btn" onclick="stopCamera()" style="background: #dc3545; margin-left: 10px;">❌ Anuluj</button>
+                </div>
+                <canvas id="captureCanvas" style="display: none;"></canvas>
+            </div>
+            
+            <div class="preview-container" id="previewContainer" style="display: none;">
+                <img id="previewImage" class="preview-image" alt="Podgląd">
+            </div>
+            
+            <div class="progress-bar" id="progressBar" style="display: none;">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            
+            <div id="loadingDiv" class="loading" style="display: none;">
+                <div class="loading-spinner"></div>
+                <p>Analizuję paragon...</p>
+            </div>
+            
+            <div id="results" class="results"></div>
+        </div>
+    </div>
+
+    <script>
+        // Baza skrótów produktów z popularnych sklepów
+        const productDatabase = {
+            // Biedronka
+            'SchWpB': 'Schab wieprzowy bez kości',
+            'kMePaVac': 'mielony, pakowany próżniowo',
+            'SmothOwTro': 'Smoothie owocowe tropikalne',
+            'VFr0': 'VitaFresh',
+            'PapieToalet': 'Papier toaletowy',
+            'Queen': 'Queen',
+            'ButkaKajzerka': 'Bułka kajzerka',
+            'Butka': 'Bułka',
+            'Żytnia': 'żytnia',
+            
+            // Żabka
+            'CocaCola': 'Coca-Cola',
+            'RedBull': 'Red Bull',
+            'Snickers': 'Snickers',
+            'KitKat': 'Kit Kat',
+            'Marlboro': 'Marlboro',
+            
+            // Kaufland
+            'KChlebTost': 'K-Classic Chleb tostowy',
+            'KMasło': 'K-Classic Masło',
+            'KMleko': 'K-Classic Mleko',
+            'Jogurt': 'Jogurt naturalny',
+            
+            // Lidl
+            'Pilos': 'Pilos',
+            'Crivit': 'Crivit',
+            'Parkside': 'Parkside',
+            'Dulano': 'Dulano',
+            
+            // Tesco
+            'TescoVal': 'Tesco Value',
+            'TescoFin': 'Tesco Finest',
+            
+            // Carrefour
+            'CarrRef': 'Carrefour',
+            'CarrEco': 'Carrefour Eco Planet',
+            
+            // Ogólne skróty
+            'Chleb': 'Chleb',
+            'Mleko': 'Mleko',
+            'Masło': 'Masło',
+            'Jajka': 'Jajka',
+            'Ser': 'Ser',
+            'Jogurt': 'Jogurt',
+            'Kiełbasa': 'Kiełbasa',
+            'Szynka': 'Szynka',
+            'Ryż': 'Ryż',
+            'Makaron': 'Makaron',
+            'Cukier': 'Cukier',
+            'Sól': 'Sól',
+            'Olej': 'Olej',
+            'Woda': 'Woda mineralna',
+            'Sok': 'Sok',
+            'Piwo': 'Piwo',
+            'Wino': 'Wino',
+            'Papierosy': 'Papierosy',
+            'Kawa': 'Kawa',
+            'Herbata': 'Herbata',
+            'Ciastka': 'Ciastka',
+            'Czekolada': 'Czekolada',
+            'Chipsy': 'Chipsy',
+            'Owoce': 'Owoce',
+            'Warzywa': 'Warzywa',
+            'Ziemniaki': 'Ziemniaki',
+            'Marchew': 'Marchew',
+            'Cebula': 'Cebula',
+            'Pomidor': 'Pomidory',
+            'Ogórek': 'Ogórki',
+            'Kapusta': 'Kapusta',
+            'Papryka': 'Papryka',
+            'Banany': 'Banany',
+            'Jabłka': 'Jabłka',
+            'Pomarańcze': 'Pomarańcze',
+            'Cytryny': 'Cytryny',
+            'Truskawki': 'Truskawki',
+            'Winogrona': 'Winogrona'
+        };
+
+        const fileInput = document.getElementById('fileInput');
+        const uploadSection = document.getElementById('uploadSection');
+        const cameraSection = document.getElementById('cameraSection');
+        const cameraVideo = document.getElementById('cameraVideo');
+        const captureCanvas = document.getElementById('captureCanvas');
+        const previewContainer = document.getElementById('previewContainer');
+        const previewImage = document.getElementById('previewImage');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const loadingDiv = document.getElementById('loadingDiv');
+        const results = document.getElementById('results');
+        
+        let cameraStream = null;
+
+        // Obsługa drag & drop
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.classList.add('dragover');
+        });
+
+        uploadSection.addEventListener('dragleave', () => {
+            uploadSection.classList.remove('dragover');
+        });
+
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        // Funkcje kamery
+        async function startCamera() {
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'environment', // kamera tylna na telefonie
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    } 
+                });
+                
+                cameraVideo.srcObject = cameraStream;
+                cameraSection.style.display = 'block';
+                uploadSection.style.display = 'none';
+                
+            } catch (error) {
+                showError('Nie można uruchomić kamery: ' + error.message + '. Sprawdź uprawnienia.');
+            }
+        }
+
+        function capturePhoto() {
+            const canvas = captureCanvas;
+            const video = cameraVideo;
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Konwertujemy na obraz i pokazujemy podgląd
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                previewImage.src = url;
+                previewContainer.style.display = 'block';
+                
+                stopCamera();
+                processImageFromCanvas(canvas);
+            }, 'image/jpeg', 0.95);
+        }
+
+        function stopCamera() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            
+            cameraSection.style.display = 'none';
+            uploadSection.style.display = 'block';
+        }
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+                showError('Proszę wybrać plik obrazu (JPG, PNG, WebP) lub PDF');
+                return;
+            }
+
+            if (file.type === 'application/pdf') {
+                handlePDF(file);
+            } else {
+                handleImage(file);
+            }
+        }
+
+        function handleImage(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                previewContainer.style.display = 'block';
+                processImage(file);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function handlePDF(file) {
+            showLoading();
+            
+            try {
+                // Konfiguracja PDF.js
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+                
+                // Renderujemy pierwszą stronę (paragony to zwykle 1 strona)
+                const page = await pdf.getPage(1);
+                const scale = 2.0; // Wyższa jakość dla lepszego OCR
+                const viewport = page.getViewport({scale: scale});
+                
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                
+                const renderContext = {
+                    canvasContext: context,
+                    viewport: viewport
+                };
+                
+                await page.render(renderContext).promise;
+                
+                // Pokazujemy podgląd
+                canvas.toBlob((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    previewImage.src = url;
+                    previewContainer.style.display = 'block';
+                    
+                    // Przekazujemy canvas do OCR
+                    processImageFromCanvas(canvas);
+                });
+                
+            } catch (error) {
+                hideLoading();
+                showError('Błąd podczas przetwarzania PDF: ' + error.message);
+            }
+        }
+
+        async function processImageFromCanvas(canvas) {
+            try {
+                const result = await Tesseract.recognize(
+                    canvas,
+                    'pol',
+                    {
+                        logger: m => {
+                            if (m.status === 'recognizing text') {
+                                updateProgress(m.progress * 100);
+                            }
+                        }
+                    }
+                );
+
+                hideLoading();
+                analyzeReceipt(result.data.text);
+                
+            } catch (error) {
+                hideLoading();
+                showError('Błąd podczas analizowania PDF: ' + error.message);
+            }
+        }
+
+        async function processImage(file) {
+            showLoading();
+            
+            try {
+                const result = await Tesseract.recognize(
+                    file,
+                    'pol',
+                    {
+                        logger: m => {
+                            if (m.status === 'recognizing text') {
+                                updateProgress(m.progress * 100);
+                            }
+                        }
+                    }
+                );
+
+                hideLoading();
+                analyzeReceipt(result.data.text);
+                
+            } catch (error) {
+                hideLoading();
+                showError('Błąd podczas analizowania obrazu: ' + error.message);
+            }
+        }
+
+        function analyzeReceipt(text) {
+            const lines = text.split('\n').filter(line => line.trim().length > 3);
+            const products = [];
+            
+            for (let line of lines) {
+                // Szukamy linii z produktami (zawierają cenę i być może ilość)
+                if (line.match(/\d+[,\.]\d{2}/) && !line.match(/SUMA|PTU|SPRZEDAŻ/)) {
+                    const product = parseProductLine(line);
+                    if (product) {
+                        products.push(product);
+                    }
+                }
+            }
+            
+            displayResults(products);
+        }
+
+        function parseProductLine(line) {
+            // Próbujemy wyodrębnić nazwę produktu, ilość i cenę
+            const priceMatch = line.match(/(\d+[,\.]\d{2})/g);
+            if (!priceMatch) return null;
+            
+            // Różne formaty ilości na paragonach:
+            // "C 0.876 x 16,95" (waga)
+            // "C 1.0 x 6,99" (sztuki) 
+            // "C 4.0 x 0,35" (kilka sztuk)
+            // "1,500 kg" (waga w kg)
+            // "2 szt" (sztuki)
+            
+            let quantity = '1';
+            let unit = 'szt';
+            
+            // Szukamy wzorca: liczba x cena
+            const quantityXMatch = line.match(/([A-Z]\s*)?(\d+[,\.]\d*)\s*x\s*(\d+[,\.]\d{2})/);
+            if (quantityXMatch) {
+                quantity = quantityXMatch[2].replace(',', '.');
+                
+                // Określamy jednostkę na podstawie kontekstu
+                if (parseFloat(quantity) < 1.0 && parseFloat(quantity) > 0) {
+                    unit = 'kg'; // prawdopodobnie waga
+                } else if (parseFloat(quantity) > 10) {
+                    unit = 'g'; // prawdopodobnie gramy
+                } else {
+                    unit = 'szt'; // sztuki
+                }
+            } 
+            // Szukamy wzorca: liczba kg/g/szt
+            else {
+                const weightMatch = line.match(/(\d+[,\.]\d*)\s*(kg|g|szt|l|ml|op)/i);
+                if (weightMatch) {
+                    quantity = weightMatch[1].replace(',', '.');
+                    unit = weightMatch[2].toLowerCase();
+                }
+            }
+            
+            // Wyodrębniamy nazwę produktu (wszystko przed ilością/ceną)
+            let productName = line
+                .replace(/[A-Z]\s*\d+[,\.]\d*\s*x.*/, '')  // usuń "C 1.0 x 6,99"
+                .replace(/\d+[,\.]\d*\s*(kg|g|szt|l|ml|op).*/, '')  // usuń "55g"
+                .replace(/\s*\d+[,\.]\d{2}.*/, '')  // usuń końcowe ceny
+                .trim();
+            
+            const decodedName = decodeProductName(productName);
+            
+            // Formatujemy ilość ładnie
+            const formattedQuantity = formatQuantity(quantity, unit);
+            
+            return {
+                original: productName,
+                decoded: decodedName,
+                quantity: formattedQuantity,
+                rawQuantity: quantity,
+                unit: unit,
+                line: line
+            };
+        }
+        
+        function formatQuantity(quantity, unit) {
+            const num = parseFloat(quantity);
+            
+            switch(unit) {
+                case 'kg':
+                    if (num < 1) {
+                        return `${(num * 1000).toFixed(0)}g`;
+                    }
+                    return `${num.toFixed(3)}kg`;
+                case 'g':
+                    return `${num.toFixed(0)}g`;
+                case 'l':
+                    if (num < 1) {
+                        return `${(num * 1000).toFixed(0)}ml`;
+                    }
+                    return `${num.toFixed(2)}l`;
+                case 'ml':
+                    return `${num.toFixed(0)}ml`;
+                case 'szt':
+                    return num === 1 ? '1 sztuka' : `${num.toFixed(0)} sztuk`;
+                case 'op':
+                    return `${num.toFixed(0)} opakowanie`;
+                default:
+                    return `${quantity} ${unit}`;
+            }
+        }
+
+        function decodeProductName(name) {
+            let decoded = name;
+            
+            // Sprawdzamy każdy skrót w bazie danych
+            for (let [shortcut, fullName] of Object.entries(productDatabase)) {
+                if (name.includes(shortcut)) {
+                    decoded = decoded.replace(shortcut, fullName);
+                }
+            }
+            
+            // Podstawowe zamienniki
+            decoded = decoded
+                .replace(/VFr\d+/, 'VitaFresh')
+                .replace(/\d+g/, ' (opakowanie)')
+                .replace(/\d+ml/, 'ml')
+                .replace(/\d+l/, 'l')
+                .replace(/kg/, ' (za kilogram)')
+                .replace(/szt/, ' (sztuka)')
+                .replace(/op/, ' (opakowanie)');
+            
+            return decoded !== name ? decoded : name + ' (nie rozpoznano)';
+        }
+
+        function displayResults(products) {
+            if (products.length === 0) {
+                results.innerHTML = '<div class="error">Nie znaleziono produktów na paragonie. Spróbuj z lepszym zdjęciem lub PDF o wyższej jakości.</div>';
+                return;
+            }
+            
+            let html = '<h3>🛒 Rozpoznane produkty:</h3>';
+            
+            products.forEach((product, index) => {
+                // Dodajemy ikonę odpowiednią do jednostki
+                let icon = '📦';
+                if (product.unit === 'kg' || product.unit === 'g') icon = '⚖️';
+                if (product.unit === 'l' || product.unit === 'ml') icon = '🥤';
+                if (product.unit === 'szt') icon = '🔢';
+                
+                html += `
+                    <div class="product-item">
+                        <div class="product-original">Oryginalny tekst: ${product.original}</div>
+                        <div class="product-decoded">${icon} ${product.decoded}</div>
+                        <div class="quantity">📏 Ilość: <strong>${product.quantity}</strong></div>
+                    </div>
+                `;
+            });
+            
+            html += `
+                <div style="margin-top: 20px; padding: 15px; background: #e8f5e8; border-radius: 5px;">
+                    <strong>💡 Wskazówki:</strong><br>
+                    • PDF-y często dają lepsze rezultaty niż zdjęcia<br>
+                    • Jeśli produkty nie zostały rozpoznane, spróbuj z lepszym skanem<br>
+                    • Możesz rozszerzyć bazę skrótów w kodzie aplikacji
+                </div>
+            `;
+            
+            results.innerHTML = html;
+        }
+
+        function showLoading() {
+            loadingDiv.style.display = 'block';
+            progressBar.style.display = 'block';
+            results.innerHTML = '';
+        }
+
+        function hideLoading() {
+            loadingDiv.style.display = 'none';
+            progressBar.style.display = 'none';
+        }
+
+        function updateProgress(percent) {
+            progressFill.style.width = percent + '%';
+        }
+
+        function showError(message) {
+            results.innerHTML = `<div class="error">❌ ${message}</div>`;
+        }
+    </script>
+</body>
+</html>
