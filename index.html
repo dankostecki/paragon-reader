@@ -561,13 +561,30 @@
             try {
                 const result = await Tesseract.recognize(
                     canvas,
-                    'pol',
+                    'pol+eng', // polski + angielski dla lepszych wyników
                     {
                         logger: m => {
                             if (m.status === 'recognizing text') {
                                 updateProgress(m.progress * 100);
                             }
-                        }
+                        },
+                        // Zaawansowane opcje dla lepszej dokładności
+                        tessedit_pageseg_mode: Tesseract.PSM.AUTO, // automatyczna segmentacja
+                        tessedit_ocr_engine_mode: Tesseract.OEM.LSTM_ONLY, // najlepszy silnik
+                        preserve_interword_spaces: '1', // zachowaj spacje między słowami
+                        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ąćęłńóśźżĄĆĘŁŃÓŚŹŻ .,;:-+()[]{}/', // dozwolone znaki
+                        // Ustawienia dla paragonów
+                        tessedit_write_images: '0', // wyłącz zapis debug obrazów
+                        user_defined_dpi: '300', // wysoka rozdzielczość
+                        // Preprocessing
+                        textord_heavy_nr: '1', // lepsza analiza szumu
+                        // Dla małych tekstów (paragony)
+                        textord_min_linesize: '2.5',
+                        // Zwiększ pewność rozpoznawania
+                        tessedit_reject_bad_qual_wds: '1',
+                        // Optymalizacja dla dokumentów
+                        load_system_dawg: '0',
+                        load_freq_dawg: '0'
                     }
                 );
 
@@ -586,13 +603,30 @@
             try {
                 const result = await Tesseract.recognize(
                     file,
-                    'pol',
+                    'pol+eng', // polski + angielski dla lepszych wyników
                     {
                         logger: m => {
                             if (m.status === 'recognizing text') {
                                 updateProgress(m.progress * 100);
                             }
-                        }
+                        },
+                        // Zaawansowane opcje dla lepszej dokładności
+                        tessedit_pageseg_mode: Tesseract.PSM.AUTO, // automatyczna segmentacja
+                        tessedit_ocr_engine_mode: Tesseract.OEM.LSTM_ONLY, // najlepszy silnik
+                        preserve_interword_spaces: '1', // zachowaj spacje między słowami
+                        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ąćęłńóśźżĄĆĘŁŃÓŚŹŻ .,;:-+()[]{}/', // dozwolone znaki
+                        // Ustawienia dla paragonów
+                        tessedit_write_images: '0', // wyłącz zapis debug obrazów
+                        user_defined_dpi: '300', // wysoka rozdzielczość
+                        // Preprocessing
+                        textord_heavy_nr: '1', // lepsza analiza szumu
+                        // Dla małych tekstów (paragony)
+                        textord_min_linesize: '2.5',
+                        // Zwiększ pewność rozpoznawania
+                        tessedit_reject_bad_qual_wds: '1',
+                        // Optymalizacja dla dokumentów
+                        load_system_dawg: '0',
+                        load_freq_dawg: '0'
                     }
                 );
 
@@ -767,7 +801,7 @@
         }
 
         // Znajdź najlepsze dopasowanie z tolerancją
-        function findBestMatch(productName, shortcuts, tolerance = 80) {
+        function findBestMatch(productName, shortcuts, tolerance = 60) {
             let bestMatch = null;
             let bestSimilarity = 0;
             let bestShortcut = '';
@@ -851,7 +885,7 @@
             let matchDetails = [];
             
             // Konfiguracja tolerancji - można dostosować
-            const tolerance = 75; // 75% podobieństwa
+            const tolerance = 60; // 60% podobieństwa (było 75%)
             
             // Najpierw spróbuj ze sklepem-specific skrótami
             if (detectedStore !== 'general' && productDatabase.stores[detectedStore]) {
@@ -996,7 +1030,7 @@
                 <div style="margin-top: 20px; padding: 15px; background: #f0f8ff; border-radius: 5px;">
                     <strong>💡 System inteligentnego dopasowania:</strong><br>
                     • <strong>Dokładne dopasowanie:</strong> szuka exact match w bazie<br>
-                    • <strong>Fuzzy matching:</strong> tolerancja 75% podobieństwa (błędy OCR)<br>
+                    • <strong>Fuzzy matching:</strong> tolerancja 60% podobieństwa (błędy OCR)<br>
                     • <strong>Korekta OCR:</strong> automatyczne poprawianie typowych błędów<br>
                     • Baza danych: ${dbInfo}<br>
                     • Szczegóły dopasowań w konsoli przeglądarki (F12)
