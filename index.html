@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Czytnik Paragonów Pro</title>
+    <title>Czytnik Paragonów</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.0/tesseract.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
@@ -46,51 +46,8 @@
             font-size: 1.1rem;
         }
         
-        .enhancement-badge {
-            background: rgba(255,255,255,0.2);
-            padding: 5px 15px;
-            border-radius: 15px;
-            margin-top: 10px;
-            display: inline-block;
-            font-size: 0.9rem;
-        }
-        
         .main-content {
             padding: 30px;
-        }
-        
-        .settings-panel {
-            background: #f8f9ff;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        
-        .settings-panel h4 {
-            color: #667eea;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .setting-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin: 10px 0;
-            padding: 10px;
-            background: white;
-            border-radius: 5px;
-        }
-        
-        .setting-row label {
-            font-weight: 500;
-            color: #333;
-        }
-        
-        .setting-row input[type="checkbox"] {
-            transform: scale(1.2);
         }
         
         .upload-section {
@@ -125,7 +82,6 @@
             font-size: 1.1rem;
             cursor: pointer;
             transition: transform 0.2s ease;
-            margin: 5px;
         }
         
         .upload-btn:hover {
@@ -147,24 +103,13 @@
         .preview-container {
             margin: 20px 0;
             text-align: center;
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            flex-wrap: wrap;
         }
         
         .preview-image {
-            max-width: 300px;
-            max-height: 200px;
+            max-width: 100%;
+            max-height: 300px;
             border-radius: 10px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-        
-        .preview-label {
-            text-align: center;
-            font-weight: bold;
-            margin-top: 10px;
-            color: #667eea;
         }
         
         .progress-bar {
@@ -250,47 +195,16 @@
             border-radius: 5px;
             margin: 10px 0;
         }
-        
-        .enhancement-info {
-            background: #e8f5e8;
-            padding: 10px;
-            border-radius: 5px;
-            margin: 10px 0;
-            font-size: 0.9rem;
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🧾 Czytnik Paragonów Pro</h1>
+            <h1>🧾 Czytnik Paragonów</h1>
             <p>Zrób zdjęcie, wgraj plik lub PDF paragonu, a ja rozszyfruję sklepowe skróty</p>
-            <div class="enhancement-badge">
-                ✨ Z poprawą jakości obrazu
-            </div>
         </div>
         
         <div class="main-content">
-            <div class="settings-panel">
-                <h4>🔧 Ustawienia poprawy obrazu</h4>
-                <div class="setting-row">
-                    <label>Automatyczna poprawa kontrastu</label>
-                    <input type="checkbox" id="enableContrast" checked>
-                </div>
-                <div class="setting-row">
-                    <label>Rozjaśnianie ciemnych obszarów</label>
-                    <input type="checkbox" id="enableBrightness" checked>
-                </div>
-                <div class="setting-row">
-                    <label>Ostrzenie obrazu</label>
-                    <input type="checkbox" id="enableSharpening" checked>
-                </div>
-                <div class="setting-row">
-                    <label>Binaryzacja (czarno-białe)</label>
-                    <input type="checkbox" id="enableBinarization">
-                </div>
-            </div>
-            
             <div class="upload-section" id="uploadSection">
                 <h3>Zrób zdjęcie, wybierz plik lub przeciągnij paragon</h3>
                 <p style="margin: 15px 0; color: #666;">Obsługuje: JPG, PNG, WebP, <strong>PDF</strong></p>
@@ -320,14 +234,7 @@
             </div>
             
             <div class="preview-container" id="previewContainer" style="display: none;">
-                <div>
-                    <img id="originalImage" class="preview-image" alt="Oryginalny obraz">
-                    <div class="preview-label">Oryginalny obraz</div>
-                </div>
-                <div>
-                    <img id="enhancedImage" class="preview-image" alt="Poprawiony obraz">
-                    <div class="preview-label">Po poprawie jakości</div>
-                </div>
+                <img id="previewImage" class="preview-image" alt="Podgląd">
             </div>
             
             <div class="progress-bar" id="progressBar" style="display: none;">
@@ -336,7 +243,7 @@
             
             <div id="loadingDiv" class="loading" style="display: none;">
                 <div class="loading-spinner"></div>
-                <p>Poprawiam jakość obrazu i analizuję paragon...</p>
+                <p>Analizuję paragon...</p>
             </div>
             
             <div id="results" class="results"></div>
@@ -351,6 +258,7 @@
         // Załaduj bazę danych przy starcie
         async function loadProductDatabase() {
             try {
+                // Spróbuj załadować z tego samego katalogu
                 const response = await fetch('./product-database.json');
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -396,193 +304,13 @@
         const cameraVideo = document.getElementById('cameraVideo');
         const captureCanvas = document.getElementById('captureCanvas');
         const previewContainer = document.getElementById('previewContainer');
-        const originalImage = document.getElementById('originalImage');
-        const enhancedImage = document.getElementById('enhancedImage');
+        const previewImage = document.getElementById('previewImage');
         const progressBar = document.getElementById('progressBar');
         const progressFill = document.getElementById('progressFill');
         const loadingDiv = document.getElementById('loadingDiv');
         const results = document.getElementById('results');
         
         let cameraStream = null;
-
-        // ========================================
-        // UPROSZCZONE FUNKCJE POPRAWY JAKOŚCI OBRAZU
-        // ========================================
-
-        function enhanceImageForOCR(canvas) {
-            console.log('🔧 Rozpoczynam poprawę jakości obrazu...');
-            
-            try {
-                const ctx = canvas.getContext('2d');
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                
-                // Skopiuj dane do przetworzenia
-                const data = new Uint8ClampedArray(imageData.data);
-                
-                // 1. Poprawa kontrastu
-                if (document.getElementById('enableContrast').checked) {
-                    console.log('📈 Poprawiam kontrast...');
-                    enhanceContrast(data);
-                }
-                
-                // 2. Rozjaśnianie ciemnych obszarów
-                if (document.getElementById('enableBrightness').checked) {
-                    console.log('💡 Rozjaśniam ciemne obszary...');
-                    brightenDarkAreas(data);
-                }
-                
-                // 3. Ostrzenie obrazu
-                if (document.getElementById('enableSharpening').checked) {
-                    console.log('🔍 Ostrzę obraz...');
-                    sharpenImage(data, canvas.width, canvas.height);
-                }
-                
-                // 4. Binaryzacja (opcjonalna)
-                if (document.getElementById('enableBinarization').checked) {
-                    console.log('⚫⚪ Binalizuję obraz...');
-                    binarizeImage(data);
-                }
-                
-                // Zastosuj zmiany
-                const newImageData = new ImageData(data, canvas.width, canvas.height);
-                ctx.putImageData(newImageData, 0, 0);
-                
-                console.log('✅ Poprawa jakości ukończona');
-                return canvas;
-                
-            } catch (error) {
-                console.error('❌ Błąd podczas poprawy jakości:', error);
-                // Zwróć oryginalny canvas w przypadku błędu
-                return canvas;
-            }
-        }
-
-        function enhanceContrast(data) {
-            // Znajdź min i max wartości
-            let min = 255, max = 0;
-            for (let i = 0; i < data.length; i += 4) {
-                const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-                min = Math.min(min, gray);
-                max = Math.max(max, gray);
-            }
-            
-            if (max > min) {
-                const range = max - min;
-                for (let i = 0; i < data.length; i += 4) {
-                    // Rozciągnij kontrast
-                    data[i] = Math.min(255, Math.max(0, ((data[i] - min) / range) * 255));
-                    data[i + 1] = Math.min(255, Math.max(0, ((data[i + 1] - min) / range) * 255));
-                    data[i + 2] = Math.min(255, Math.max(0, ((data[i + 2] - min) / range) * 255));
-                }
-            }
-        }
-
-        function brightenDarkAreas(data) {
-            for (let i = 0; i < data.length; i += 4) {
-                const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-                
-                // Rozjaśnij piksele ciemniejsze niż 128
-                if (gray < 128) {
-                    const factor = 1.5; // Zwiększ jasność o 50%
-                    data[i] = Math.min(255, data[i] * factor);
-                    data[i + 1] = Math.min(255, data[i + 1] * factor);
-                    data[i + 2] = Math.min(255, data[i + 2] * factor);
-                }
-            }
-        }
-
-        function sharpenImage(data, width, height) {
-            // Kernel do ostrzenia
-            const kernel = [
-                0, -1, 0,
-                -1, 5, -1,
-                0, -1, 0
-            ];
-            
-            const result = new Uint8ClampedArray(data);
-            
-            for (let y = 1; y < height - 1; y++) {
-                for (let x = 1; x < width - 1; x++) {
-                    for (let c = 0; c < 3; c++) { // RGB tylko
-                        let sum = 0;
-                        let kernelIndex = 0;
-                        
-                        for (let ky = -1; ky <= 1; ky++) {
-                            for (let kx = -1; kx <= 1; kx++) {
-                                const idx = ((y + ky) * width + (x + kx)) * 4 + c;
-                                sum += data[idx] * kernel[kernelIndex];
-                                kernelIndex++;
-                            }
-                        }
-                        
-                        const idx = (y * width + x) * 4 + c;
-                        result[idx] = Math.min(255, Math.max(0, sum));
-                    }
-                }
-            }
-            
-            // Kopiuj wynik z powrotem
-            for (let i = 0; i < data.length; i++) {
-                data[i] = result[i];
-            }
-        }
-
-        function binarizeImage(data) {
-            // Oblicz próg Otsu
-            const histogram = new Array(256).fill(0);
-            
-            // Konwertuj do grayscale i zbuduj histogram
-            for (let i = 0; i < data.length; i += 4) {
-                const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
-                histogram[gray]++;
-            }
-            
-            // Znajdź optymalny próg (uproszczony Otsu)
-            const total = data.length / 4;
-            let threshold = 128; // domyślny próg
-            
-            let bestVariance = 0;
-            for (let t = 0; t < 256; t++) {
-                let wB = 0; // waga tła
-                let wF = 0; // waga pierwszego planu
-                let sumB = 0;
-                
-                for (let i = 0; i <= t; i++) {
-                    wB += histogram[i];
-                    sumB += i * histogram[i];
-                }
-                
-                if (wB === 0) continue;
-                
-                wF = total - wB;
-                if (wF === 0) break;
-                
-                const mB = sumB / wB; // średnia tła
-                const mF = (total * 128 - sumB) / wF; // średnia pierwszego planu (uproszczone)
-                
-                const variance = wB * wF * (mB - mF) * (mB - mF);
-                
-                if (variance > bestVariance) {
-                    bestVariance = variance;
-                    threshold = t;
-                }
-            }
-            
-            // Zastosuj binaryzację
-            for (let i = 0; i < data.length; i += 4) {
-                const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-                const value = gray > threshold ? 255 : 0;
-                
-                data[i] = value;     // R
-                data[i + 1] = value; // G
-                data[i + 2] = value; // B
-                // Alpha pozostaje bez zmian
-            }
-        }
-
-        // ========================================
-        // OBSŁUGA PLIKÓW I KAMERY
-        // ========================================
 
         // Obsługa drag & drop
         uploadSection.addEventListener('dragover', (e) => {
@@ -612,10 +340,12 @@
         // Funkcje kamery
         async function startCamera() {
             try {
+                // Sprawdź czy urządzenie obsługuje kamerę
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                     throw new Error('Twoja przeglądarka nie obsługuje kamery');
                 }
 
+                // Pierwsze spróbuj z kamerą tylną
                 let constraints = { 
                     video: { 
                         facingMode: 'environment',
@@ -627,6 +357,7 @@
                 try {
                     cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
                 } catch (envError) {
+                    // Jeśli kamera tylna nie działa, spróbuj z dowolną kamerą
                     console.log('Kamera tylna niedostępna, próbuję z przednią:', envError.message);
                     constraints = { 
                         video: { 
@@ -639,6 +370,7 @@
                 
                 cameraVideo.srcObject = cameraStream;
                 
+                // Poczekaj aż video się załaduje
                 cameraVideo.onloadedmetadata = () => {
                     cameraVideo.play();
                     cameraSection.style.display = 'block';
@@ -670,23 +402,39 @@
                 const canvas = captureCanvas;
                 const video = cameraVideo;
                 
+                // Sprawdź czy video jest gotowe
                 if (video.readyState !== video.HAVE_ENOUGH_DATA) {
                     showError('Kamera jeszcze się ładuje. Spróbuj ponownie za chwilę.');
                     return;
                 }
                 
+                // Ustaw rozmiar canvas na podstawie video
                 canvas.width = video.videoWidth || 1280;
                 canvas.height = video.videoHeight || 720;
                 
                 console.log('Rozmiar zdjęcia:', canvas.width, 'x', canvas.height);
                 
                 const ctx = canvas.getContext('2d');
+                
+                // Narysuj ramkę z video na canvas
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                 
-                console.log('Zdjęcie przechwycone');
-                
-                stopCamera();
-                processImageFromCanvas(canvas);
+                // Konwertuj na blob i pokaż podgląd
+                canvas.toBlob((blob) => {
+                    if (!blob) {
+                        showError('Nie udało się przechwycić zdjęcia. Spróbuj ponownie.');
+                        return;
+                    }
+                    
+                    const url = URL.createObjectURL(blob);
+                    previewImage.src = url;
+                    previewContainer.style.display = 'block';
+                    
+                    console.log('Zdjęcie przechwycone, rozmiar blob:', blob.size, 'bajtów');
+                    
+                    stopCamera();
+                    processImageFromCanvas(canvas);
+                }, 'image/jpeg', 0.95);
                 
             } catch (error) {
                 console.error('Błąd podczas robienia zdjęcia:', error);
@@ -707,6 +455,7 @@
 
         // Sprawdź dostępność kamery przy załadowaniu strony
         window.addEventListener('load', async () => {
+            // Najpierw załaduj bazę danych
             console.log('🚀 Ładowanie bazy danych...');
             const dbLoaded = await loadProductDatabase();
             
@@ -716,12 +465,14 @@
                 console.log('⚠️ Używam podstawowej bazy danych');
             }
             
+            // Potem sprawdź kamery
             try {
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const videoDevices = devices.filter(device => device.kind === 'videoinput');
                 
                 if (videoDevices.length === 0) {
                     console.warn('Brak dostępnych kamer');
+                    // Ukryj przycisk kamery jeśli nie ma kamer
                     const cameraBtn = document.querySelector('button[onclick="startCamera()"]');
                     if (cameraBtn) {
                         cameraBtn.style.display = 'none';
@@ -735,13 +486,12 @@
         });
 
         function handleFile(file) {
-            console.log('📁 Przetwarzam plik:', file.name, file.type);
-            
             if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
                 showError('Proszę wybrać plik obrazu (JPG, PNG, WebP) lub PDF');
                 return;
             }
 
+            // Sprawdź czy baza danych została załadowana
             if (!databaseLoaded) {
                 showError('Baza danych jeszcze się ładuje. Spróbuj ponownie za chwilę.');
                 return;
@@ -755,60 +505,34 @@
         }
 
         function handleImage(file) {
-            console.log('🖼️ Ładuję obraz z pliku...');
-            
             const reader = new FileReader();
             reader.onload = (e) => {
-                const img = new Image();
-                img.onload = () => {
-                    console.log('🖼️ Obraz załadowany:', img.width, 'x', img.height);
-                    
-                    // Stwórz canvas z oryginalnym obrazem
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    ctx.drawImage(img, 0, 0);
-                    
-                    // Pokaż oryginalny podgląd
-                    originalImage.src = e.target.result;
-                    previewContainer.style.display = 'flex';
-                    
-                    processImageFromCanvas(canvas);
-                };
-                img.onerror = () => {
-                    showError('Nie można załadować obrazu. Sprawdź czy plik nie jest uszkodzony.');
-                };
-                img.src = e.target.result;
-            };
-            reader.onerror = () => {
-                showError('Błąd podczas odczytywania pliku.');
+                previewImage.src = e.target.result;
+                previewContainer.style.display = 'block';
+                processImage(file);
             };
             reader.readAsDataURL(file);
         }
 
         async function handlePDF(file) {
-            console.log('📄 Przetwarzam PDF...');
             showLoading();
             
             try {
+                // Konfiguracja PDF.js
                 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
                 
                 const arrayBuffer = await file.arrayBuffer();
                 const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
                 
-                console.log('📄 PDF załadowany, liczba stron:', pdf.numPages);
-                
+                // Renderujemy pierwszą stronę (paragony to zwykle 1 strona)
                 const page = await pdf.getPage(1);
-                const scale = 2.0; // Dobra jakość dla OCR
+                const scale = 2.0; // Wyższa jakość dla lepszego OCR
                 const viewport = page.getViewport({scale: scale});
                 
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
                 canvas.height = viewport.height;
                 canvas.width = viewport.width;
-                
-                console.log('📄 Renderuję stronę PDF:', canvas.width, 'x', canvas.height);
                 
                 const renderContext = {
                     canvasContext: context,
@@ -817,104 +541,114 @@
                 
                 await page.render(renderContext).promise;
                 
-                // Pokaż oryginalny podgląd
+                // Pokazujemy podgląd
                 canvas.toBlob((blob) => {
                     const url = URL.createObjectURL(blob);
-                    originalImage.src = url;
-                    previewContainer.style.display = 'flex';
+                    previewImage.src = url;
+                    previewContainer.style.display = 'block';
+                    
+                    // Przekazujemy canvas do OCR
+                    processImageFromCanvas(canvas);
                 });
-                
-                processImageFromCanvas(canvas);
                 
             } catch (error) {
                 hideLoading();
-                console.error('❌ Błąd PDF:', error);
                 showError('Błąd podczas przetwarzania PDF: ' + error.message);
             }
         }
 
-        async function processImageFromCanvas(originalCanvas) {
-            console.log('🔄 Rozpoczynam przetwarzanie obrazu...');
-            
+        async function processImageFromCanvas(canvas) {
             try {
-                showLoading();
-                updateProgress(10);
-                
-                // Skopiuj canvas dla poprawy jakości
-                const enhancedCanvas = document.createElement('canvas');
-                const enhancedCtx = enhancedCanvas.getContext('2d');
-                enhancedCanvas.width = originalCanvas.width;
-                enhancedCanvas.height = originalCanvas.height;
-                enhancedCtx.drawImage(originalCanvas, 0, 0);
-                
-                updateProgress(20);
-                
-                // Zastosuj poprawę jakości
-                const startTime = performance.now();
-                enhanceImageForOCR(enhancedCanvas);
-                const enhanceTime = performance.now() - startTime;
-                
-                console.log(`✨ Poprawa jakości ukończona w ${enhanceTime.toFixed(2)}ms`);
-                updateProgress(40);
-                
-                // Pokaż poprawiony obraz
-                enhancedCanvas.toBlob((blob) => {
-                    const url = URL.createObjectURL(blob);
-                    enhancedImage.src = url;
-                    console.log('🖼️ Poprawiony obraz wyświetlony');
-                });
-                
-                updateProgress(50);
-                
-                // Uruchom OCR na poprawionym obrazie
-                console.log('🔍 Rozpoczynam OCR...');
                 const result = await Tesseract.recognize(
-                    enhancedCanvas,
-                    'pol+eng',
+                    canvas,
+                    'pol+eng', // polski + angielski dla lepszych wyników
                     {
                         logger: m => {
                             if (m.status === 'recognizing text') {
-                                updateProgress(50 + (m.progress * 50));
+                                updateProgress(m.progress * 100);
                             }
-                            console.log('OCR:', m.status, m.progress ? `${Math.round(m.progress * 100)}%` : '');
                         },
-                        tessedit_pageseg_mode: Tesseract.PSM.AUTO,
-                        tessedit_ocr_engine_mode: Tesseract.OEM.LSTM_ONLY,
-                        preserve_interword_spaces: '1',
-                        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ąćęłńóśźżĄĆĘŁŃÓŚŹŻ .,;:-+()[]{}/',
-                        user_defined_dpi: '300'
+                        // Zaawansowane opcje dla lepszej dokładności
+                        tessedit_pageseg_mode: Tesseract.PSM.AUTO, // automatyczna segmentacja
+                        tessedit_ocr_engine_mode: Tesseract.OEM.LSTM_ONLY, // najlepszy silnik
+                        preserve_interword_spaces: '1', // zachowaj spacje między słowami
+                        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ąćęłńóśźżĄĆĘŁŃÓŚŹŻ .,;:-+()[]{}/', // dozwolone znaki
+                        // Ustawienia dla paragonów
+                        tessedit_write_images: '0', // wyłącz zapis debug obrazów
+                        user_defined_dpi: '300', // wysoka rozdzielczość
+                        // Preprocessing
+                        textord_heavy_nr: '1', // lepsza analiza szumu
+                        // Dla małych tekstów (paragony)
+                        textord_min_linesize: '2.5',
+                        // Zwiększ pewność rozpoznawania
+                        tessedit_reject_bad_qual_wds: '1',
+                        // Optymalizacja dla dokumentów
+                        load_system_dawg: '0',
+                        load_freq_dawg: '0'
                     }
                 );
 
                 hideLoading();
-                
-                console.log('✅ OCR ukończony');
-                console.log('🔍 OCR confidence:', result.data.confidence);
-                console.log('📝 Rozpoznany tekst:', result.data.text.substring(0, 200) + '...');
-                
-                analyzeReceipt(result.data.text, result.data.confidence, enhanceTime);
+                analyzeReceipt(result.data.text);
                 
             } catch (error) {
                 hideLoading();
-                console.error('❌ Błąd podczas przetwarzania:', error);
+                showError('Błąd podczas analizowania PDF: ' + error.message);
+            }
+        }
+
+        async function processImage(file) {
+            showLoading();
+            
+            try {
+                const result = await Tesseract.recognize(
+                    file,
+                    'pol+eng', // polski + angielski dla lepszych wyników
+                    {
+                        logger: m => {
+                            if (m.status === 'recognizing text') {
+                                updateProgress(m.progress * 100);
+                            }
+                        },
+                        // Zaawansowane opcje dla lepszej dokładności
+                        tessedit_pageseg_mode: Tesseract.PSM.AUTO, // automatyczna segmentacja
+                        tessedit_ocr_engine_mode: Tesseract.OEM.LSTM_ONLY, // najlepszy silnik
+                        preserve_interword_spaces: '1', // zachowaj spacje między słowami
+                        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ąćęłńóśźżĄĆĘŁŃÓŚŹŻ .,;:-+()[]{}/', // dozwolone znaki
+                        // Ustawienia dla paragonów
+                        tessedit_write_images: '0', // wyłącz zapis debug obrazów
+                        user_defined_dpi: '300', // wysoka rozdzielczość
+                        // Preprocessing
+                        textord_heavy_nr: '1', // lepsza analiza szumu
+                        // Dla małych tekstów (paragony)
+                        textord_min_linesize: '2.5',
+                        // Zwiększ pewność rozpoznawania
+                        tessedit_reject_bad_qual_wds: '1',
+                        // Optymalizacja dla dokumentów
+                        load_system_dawg: '0',
+                        load_freq_dawg: '0'
+                    }
+                );
+
+                hideLoading();
+                analyzeReceipt(result.data.text);
+                
+            } catch (error) {
+                hideLoading();
                 showError('Błąd podczas analizowania obrazu: ' + error.message);
             }
         }
 
-        // ========================================
-        // ANALIZA PARAGONU - ORYGINALNY KOD
-        // ========================================
-
-        function analyzeReceipt(text, confidence = 0, enhanceTime = 0) {
-            console.log('📋 Analizuję paragon...');
-            
+        function analyzeReceipt(text) {
             const lines = text.split('\n').filter(line => line.trim().length > 3);
             const products = [];
             
+            // Wykryj sklep na podstawie tekstu paragonu
             const detectedStore = detectStore(text);
             console.log('🏪 Wykryty sklep:', detectedStore);
             
             for (let line of lines) {
+                // Szukamy linii z produktami (zawierają cenę i być może ilość)
                 if (line.match(/\d+[,\.]\d{2}/) && !line.match(/SUMA|PTU|SPRZEDAŻ/)) {
                     const product = parseProductLine(line, detectedStore);
                     if (product) {
@@ -923,11 +657,11 @@
                 }
             }
             
-            console.log('📦 Znaleziono produktów:', products.length);
-            displayResults(products, detectedStore, confidence, enhanceTime);
+            displayResults(products, detectedStore);
         }
 
         function parseProductLine(line, detectedStore = 'general') {
+            // Próbujemy wyodrębnić nazwę produktu, ilość i cenę
             const priceMatch = line.match(/(\d+[,\.]\d{2})/g);
             if (!priceMatch) return null;
             
@@ -935,47 +669,56 @@
             let unit = 'szt';
             let productName = line;
             
+            // UNIWERSALNY WZORZEC: znajdź cyfrę przed "x" gdziekolwiek w linii
+            // Przykłady: "2 x", "4x", "0,876 x", "1.5x"
             const quantityMatch = line.match(/(\d+[,.]?\d*)\s*x/i);
             if (quantityMatch) {
                 quantity = quantityMatch[1].replace(',', '.');
                 console.log(`🔍 Znaleziona ilość: ${quantity} z tekstu: "${line}"`);
                 
+                // Wyodrębnij nazwę produktu - wszystko przed pierwszą cyfrą z "x"
                 const beforeQuantity = line.split(/\d+[,.]?\d*\s*x/i)[0];
                 productName = beforeQuantity
-                    .replace(/\s+[A-Z]\s*$/, '')
+                    .replace(/\s+[A-Z]\s*$/, '')  // usuń literę na końcu (C, A, B)
                     .trim();
                 
                 console.log(`🔍 Nazwa produktu: "${productName}"`);
                 
+                // Określ jednostkę na podstawie nazwy produktu i ilości
                 const lowerName = productName.toLowerCase();
                 const quantityNum = parseFloat(quantity);
                 
                 if (lowerName.includes('l') || lowerName.includes('ml')) {
-                    unit = quantityNum === 1 ? 'szt' : 'szt';
+                    unit = quantityNum === 1 ? 'szt' : 'szt'; // butelki/puszki
                 } else if (lowerName.includes('kg') || lowerName.includes('g')) {
-                    unit = 'szt';
+                    unit = 'szt'; // opakowania
                 } else if (quantityNum < 1.0 && quantityNum > 0) {
-                    unit = 'kg';
+                    unit = 'kg'; // prawdopodobnie waga
                 } else {
-                    unit = 'szt';
+                    unit = 'szt'; // sztuki/opakowania
                 }
-            } else {
+            }
+            // Fallback: jeśli nie ma "x", spróbuj znaleźć jednostki w nazwie
+            else {
                 const weightMatch = line.match(/(\d+[,\.]\d*)\s*(kg|g|szt|l|ml|op)/i);
                 if (weightMatch) {
                     quantity = weightMatch[1].replace(',', '.');
                     unit = weightMatch[2].toLowerCase();
                 }
                 
+                // Wyodrębniamy nazwę produktu (usuń ceny z końca)
                 productName = line
                     .replace(/\d+[,\.]\d*\s*(kg|g|szt|l|ml|op).*/, '')
                     .replace(/\s*\d+[,\.]\d{2}.*/, '')
-                    .replace(/\s+[A-Z]\s*$/, '')
+                    .replace(/\s+[A-Z]\s*$/, '')  // usuń literę na końcu
                     .trim();
                 
                 console.log(`🔍 Fallback - nazwa: "${productName}", ilość: ${quantity}`);
             }
             
             const decodedName = decodeProductName(productName, detectedStore);
+            
+            // Formatujemy ilość ładnie
             const formattedQuantity = formatQuantity(quantity, unit);
             
             return {
@@ -1016,9 +759,11 @@
             }
         }
 
+        // Algorytm Levenshtein distance dla fuzzy matching
         function levenshteinDistance(str1, str2) {
             const matrix = [];
             
+            // Inicjalizacja macierzy
             for (let i = 0; i <= str2.length; i++) {
                 matrix[i] = [i];
             }
@@ -1026,15 +771,16 @@
                 matrix[0][j] = j;
             }
             
+            // Wypełnienie macierzy
             for (let i = 1; i <= str2.length; i++) {
                 for (let j = 1; j <= str1.length; j++) {
                     if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
                         matrix[i][j] = matrix[i - 1][j - 1];
                     } else {
                         matrix[i][j] = Math.min(
-                            matrix[i - 1][j - 1] + 1,
-                            matrix[i][j - 1] + 1,
-                            matrix[i - 1][j] + 1
+                            matrix[i - 1][j - 1] + 1, // zamiana
+                            matrix[i][j - 1] + 1,     // wstawienie
+                            matrix[i - 1][j] + 1      // usunięcie
                         );
                     }
                 }
@@ -1043,6 +789,7 @@
             return matrix[str2.length][str1.length];
         }
 
+        // Oblicz podobieństwo procentowe
         function calculateSimilarity(str1, str2) {
             const maxLength = Math.max(str1.length, str2.length);
             if (maxLength === 0) return 100;
@@ -1051,28 +798,32 @@
             return ((maxLength - distance) / maxLength) * 100;
         }
 
+        // Poprawa błędów OCR - typowe pomyłki
         function fixOCRErrors(text) {
             return text
-                .replace(/0/g, 'O')
-                .replace(/1/g, 'l')
-                .replace(/5/g, 'S')
-                .replace(/8/g, 'B')
-                .replace(/rn/g, 'm')
-                .replace(/vv/g, 'w')
-                .replace(/\|/g, 'l')
-                .replace(/\s+/g, '');
+                .replace(/0/g, 'O')     // 0 -> O
+                .replace(/1/g, 'l')     // 1 -> l  
+                .replace(/5/g, 'S')     // 5 -> S
+                .replace(/8/g, 'B')     // 8 -> B
+                .replace(/rn/g, 'm')    // rn -> m
+                .replace(/vv/g, 'w')    // vv -> w
+                .replace(/\|/g, 'l')    // | -> l
+                .replace(/\s+/g, '');   // usuń spacje
         }
 
+        // Znajdź najlepsze dopasowanie z tolerancją
         function findBestMatch(productName, shortcuts, tolerance = 60) {
             let bestMatch = null;
             let bestSimilarity = 0;
             let bestShortcut = '';
             
+            // Normalizuj nazwę produktu
             const normalizedProduct = fixOCRErrors(productName).toLowerCase();
             
             for (let [shortcut, fullName] of Object.entries(shortcuts)) {
                 const normalizedShortcut = fixOCRErrors(shortcut).toLowerCase();
                 
+                // Sprawdź czy shortcut zawiera się w produkcie lub na odwrót
                 if (normalizedProduct.includes(normalizedShortcut) || 
                     normalizedShortcut.includes(normalizedProduct)) {
                     
@@ -1085,6 +836,7 @@
                     }
                 }
                 
+                // Sprawdź też fragmenty (min 4 znaki)
                 if (shortcut.length >= 4) {
                     for (let i = 0; i <= normalizedProduct.length - 4; i++) {
                         const fragment = normalizedProduct.substring(i, i + shortcut.length);
@@ -1109,6 +861,7 @@
         function detectStore(receiptText) {
             const text = receiptText.toLowerCase();
             
+            // Wykryj sklep na podstawie tekstu paragonu
             if (text.includes('biedronka')) return 'biedronka';
             if (text.includes('żabka') || text.includes('zabka')) return 'zabka';
             if (text.includes('kaufland')) return 'kaufland';
@@ -1116,6 +869,7 @@
             if (text.includes('tesco')) return 'tesco';
             if (text.includes('carrefour')) return 'carrefour';
             
+            // Spróbuj wykryć na podstawie wzorców produktów
             if (!productDatabase.common_patterns) return 'general';
             
             const patterns = productDatabase.common_patterns.store_patterns;
@@ -1128,7 +882,7 @@
                 }
             }
             
-            return 'general';
+            return 'general'; // domyślnie ogólne skróty
         }
 
         function decodeProductName(name, detectedStore = 'general') {
@@ -1141,8 +895,10 @@
             let bestSimilarity = 0;
             let matchDetails = [];
             
-            const tolerance = 60;
+            // Konfiguracja tolerancji - można dostosować
+            const tolerance = 60; // 60% podobieństwa (było 75%)
             
+            // Najpierw spróbuj ze sklepem-specific skrótami
             if (detectedStore !== 'general' && productDatabase.stores[detectedStore]) {
                 const storeShortcuts = productDatabase.stores[detectedStore].shortcuts;
                 
@@ -1155,6 +911,7 @@
                 }
             }
             
+            // Potem spróbuj z ogólnymi skrótami
             if (productDatabase.general_shortcuts && productDatabase.general_shortcuts.shortcuts) {
                 const generalMatch = findBestMatch(name, productDatabase.general_shortcuts.shortcuts, tolerance);
                 if (generalMatch && generalMatch.similarity > bestSimilarity) {
@@ -1165,7 +922,9 @@
                 }
             }
             
+            // Jeśli nie znaleziono fuzzy match, spróbuj tradycyjnego includes
             if (!foundMatch) {
+                // Sklepowe skróty
                 if (detectedStore !== 'general' && productDatabase.stores[detectedStore]) {
                     const storeShortcuts = productDatabase.stores[detectedStore].shortcuts;
                     
@@ -1178,6 +937,7 @@
                     }
                 }
                 
+                // Ogólne skróty
                 if (productDatabase.general_shortcuts && productDatabase.general_shortcuts.shortcuts) {
                     for (let [shortcut, fullName] of Object.entries(productDatabase.general_shortcuts.shortcuts)) {
                         if (name.includes(shortcut)) {
@@ -1189,6 +949,7 @@
                 }
             }
             
+            // Podstawowe zamienniki
             decoded = decoded
                 .replace(/VFr\d+/, 'VitaFresh')
                 .replace(/\d+g/, ' (opakowanie)')
@@ -1198,6 +959,7 @@
                 .replace(/szt/, ' (sztuka)')
                 .replace(/op/, ' (opakowanie)');
             
+            // Dodaj informacje o dopasowaniu
             let result = decoded;
             
             if (foundMatch) {
@@ -1206,10 +968,12 @@
                     result = `${decoded} [${storeName}]`;
                 }
                 
+                // Dodaj info o podobieństwie jeśli nie było dokładne
                 if (bestSimilarity > 0 && bestSimilarity < 100) {
                     result += ` ~${Math.round(bestSimilarity)}%`;
                 }
                 
+                // Debug info w konsoli
                 console.log(`🔍 Dopasowanie: "${name}" → "${decoded}" (${matchDetails.join(', ')})`);
             } else {
                 result = name + ' (nie rozpoznano)';
@@ -1219,7 +983,8 @@
             return result;
         }
 
-        function displayResults(products, detectedStore = 'general', confidence = 0, enhanceTime = 0) {
+        function displayResults(products, detectedStore = 'general') {
+            // UKRYJ nie rozpoznane produkty
             const recognizedProducts = products.filter(p => !p.decoded.includes('(nie rozpoznano)'));
             
             if (recognizedProducts.length === 0) {
@@ -1227,27 +992,19 @@
                 return;
             }
             
+            // Informacja o wykrytym sklepie
             const storeName = detectedStore !== 'general' && productDatabase.stores[detectedStore] 
                 ? productDatabase.stores[detectedStore].name 
                 : 'Ogólny';
             
+            // Policz statystyki
             const totalProducts = products.length;
             const recognizedCount = recognizedProducts.length;
             const fuzzyMatches = recognizedProducts.filter(p => p.decoded.includes('~'));
             const notRecognizedCount = totalProducts - recognizedCount;
             
-            // Sprawdź jakie poprawki zostały zastosowane
-            const appliedEnhancements = [];
-            if (document.getElementById('enableContrast').checked) appliedEnhancements.push('Kontrast');
-            if (document.getElementById('enableBrightness').checked) appliedEnhancements.push('Rozjaśnianie');
-            if (document.getElementById('enableSharpening').checked) appliedEnhancements.push('Ostrzenie');
-            if (document.getElementById('enableBinarization').checked) appliedEnhancements.push('Binaryzacja');
-            
             let html = `
                 <div style="background: #e8f5e8; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-                    <strong>✨ Poprawki obrazu:</strong> ${appliedEnhancements.join(', ')}<br>
-                    <strong>⏱️ Czas przetwarzania:</strong> ${enhanceTime.toFixed(2)}ms<br>
-                    <strong>🎯 Jakość OCR:</strong> ${confidence.toFixed(1)}%<br>
                     <strong>🏪 Wykryty sklep:</strong> ${storeName}<br>
                     <strong>🛒 Produkty na paragonie:</strong> ${totalProducts}<br>
                     <strong>✅ Rozpoznane i pokazane:</strong> ${recognizedCount}<br>
@@ -1258,11 +1015,13 @@
             `;
             
             recognizedProducts.forEach((product, index) => {
+                // Dodajemy ikonę odpowiednią do jednostki
                 let icon = '📦';
                 if (product.unit === 'kg' || product.unit === 'g') icon = '⚖️';
                 if (product.unit === 'l' || product.unit === 'ml') icon = '🥤';
                 if (product.unit === 'szt') icon = '🔢';
                 
+                // Sprawdź czy to fuzzy match
                 const isFuzzyMatch = product.decoded.includes('~');
                 
                 let productClass = 'product-item';
@@ -1277,27 +1036,27 @@
                 `;
             });
             
+            // Informacja o bazie danych i systemie dopasowania
             const dbInfo = databaseLoaded && productDatabase.metadata 
                 ? `v${productDatabase.metadata.version} (${productDatabase.metadata.last_updated})`
                 : 'podstawowa';
                 
             html += `
                 <div style="margin-top: 20px; padding: 15px; background: #f0f8ff; border-radius: 5px;">
-                    <strong>🚀 Funkcje poprawy jakości obrazu:</strong><br>
-                    • <strong>Kontrast:</strong> rozciąga zakres jasności<br>
-                    • <strong>Rozjaśnianie:</strong> poprawia widoczność ciemnych obszarów<br>
-                    • <strong>Ostrzenie:</strong> zwiększa czytelność tekstu<br>
-                    • <strong>Binaryzacja:</strong> konwertuje do czarno-białego (eksperymentalna)<br>
-                    Baza danych: ${dbInfo}
+                    <strong>💡 System inteligentnego dopasowania:</strong><br>
+                    • <strong>Dokładne dopasowanie:</strong> szuka exact match w bazie<br>
+                    • <strong>Fuzzy matching:</strong> tolerancja 60% podobieństwa (błędy OCR)<br>
+                    • <strong>Format Biedronki:</strong> rozpoznaje "nazwa C ilość x cena"<br>
+                    • Baza danych: ${dbInfo}<br>
+                    • Szczegóły dopasowań w konsoli przeglądarki (F12)
                 </div>
                 
                 <div style="margin-top: 15px; padding: 15px; background: #fff3cd; border-radius: 5px;">
-                    <strong>💡 Porady dla lepszego skanowania:</strong><br>
-                    1. <strong>Oświetlenie:</strong> Unikaj cieni i odbić<br>
-                    2. <strong>Stabilność:</strong> Trzymaj telefon stabilnie<br>
-                    3. <strong>Jakość:</strong> Ustaw paragon płasko<br>
-                    4. <strong>Kąt:</strong> Zrób zdjęcie prostopadle do paragonu<br>
-                    5. <strong>Ustawienia:</strong> Eksperymentuj z checkbox'ami powyżej
+                    <strong>🎯 Jak zwiększyć rozpoznawalność:</strong><br>
+                    1. Edytuj plik <code>product-database.json</code><br>
+                    2. Dodaj skróty nierozpoznanych produktów do sekcji "${detectedStore}"<br>
+                    3. Format: <code>"SkrotZParagonu": "Pełna nazwa produktu"</code><br>
+                    4. System automatycznie znajdzie podobne zapisy przy następnym skanie
                 </div>
             `;
             
