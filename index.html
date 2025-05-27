@@ -93,10 +93,6 @@
             transform: scale(1.2);
         }
         
-        .setting-row input[type="range"] {
-            width: 150px;
-        }
-        
         .upload-section {
             border: 3px dashed #667eea;
             border-radius: 10px;
@@ -270,7 +266,7 @@
             <h1>🧾 Czytnik Paragonów Pro</h1>
             <p>Zrób zdjęcie, wgraj plik lub PDF paragonu, a ja rozszyfruję sklepowe skróty</p>
             <div class="enhancement-badge">
-                ✨ Z poprawą jakości obrazu AI
+                ✨ Z poprawą jakości obrazu
             </div>
         </div>
         
@@ -278,28 +274,20 @@
             <div class="settings-panel">
                 <h4>🔧 Ustawienia poprawy obrazu</h4>
                 <div class="setting-row">
-                    <label>Automatyczna poprawa kontrastu (CLAHE)</label>
-                    <input type="checkbox" id="enableCLAHE" checked>
+                    <label>Automatyczna poprawa kontrastu</label>
+                    <input type="checkbox" id="enableContrast" checked>
                 </div>
                 <div class="setting-row">
-                    <label>Usuwanie cieni i odbić</label>
-                    <input type="checkbox" id="enableShadowRemoval" checked>
+                    <label>Rozjaśnianie ciemnych obszarów</label>
+                    <input type="checkbox" id="enableBrightness" checked>
                 </div>
                 <div class="setting-row">
-                    <label>Binaryzacja adaptacyjna</label>
-                    <input type="checkbox" id="enableAdaptiveThreshold" checked>
+                    <label>Ostrzenie obrazu</label>
+                    <input type="checkbox" id="enableSharpening" checked>
                 </div>
                 <div class="setting-row">
-                    <label>Usuwanie szumu</label>
-                    <input type="checkbox" id="enableNoiseReduction" checked>
-                </div>
-                <div class="setting-row">
-                    <label>Korekcja gamma dla ciemnych obszarów</label>
-                    <input type="checkbox" id="enableGammaCorrection" checked>
-                </div>
-                <div class="setting-row">
-                    <label>Siła poprawy: <span id="enhancementStrengthValue">0.7</span></label>
-                    <input type="range" id="enhancementStrength" min="0.3" max="1.0" step="0.1" value="0.7">
+                    <label>Binaryzacja (czarno-białe)</label>
+                    <input type="checkbox" id="enableBinarization">
                 </div>
             </div>
             
@@ -360,15 +348,9 @@
         let productDatabase = {};
         let databaseLoaded = false;
         
-        // Event listenery dla ustawień
-        document.getElementById('enhancementStrength').addEventListener('input', function() {
-            document.getElementById('enhancementStrengthValue').textContent = this.value;
-        });
-        
         // Załaduj bazę danych przy starcie
         async function loadProductDatabase() {
             try {
-                // Spróbuj załadować z tego samego katalogu
                 const response = await fetch('./product-database.json');
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -424,295 +406,182 @@
         let cameraStream = null;
 
         // ========================================
-        // FUNKCJE POPRAWY JAKOŚCI OBRAZU
+        // UPROSZCZONE FUNKCJE POPRAWY JAKOŚCI OBRAZU
         // ========================================
 
         function enhanceImageForOCR(canvas) {
-            const ctx = canvas.getContext('2d');
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            let processedData = new ImageData(
-                new Uint8ClampedArray(imageData.data), 
-                imageData.width, 
-                imageData.height
-            );
-
-            const settings = {
-                enableCLAHE: document.getElementById('enableCLAHE').checked,
-                enableShadowRemoval: document.getElementById('enableShadowRemoval').checked,
-                enableAdaptiveThreshold: document.getElementById('enableAdaptiveThreshold').checked,
-                enableNoiseReduction: document.getElementById('enableNoiseReduction').checked,
-                enableGammaCorrection: document.getElementById('enableGammaCorrection').checked,
-                strength: parseFloat(document.getElementById('enhancementStrength').value)
-            };
-
-            console.log('🔧 Ustawienia poprawy:', settings);
-
-            // 1. Korekcja gamma dla ciemnych obszarów
-            if (settings.enableGammaCorrection) {
-                processedData = gammaCorrection(processedData, 0.7); // gamma < 1 rozjaśnia ciemne obszary
-            }
-
-            // 2. Usuwanie cieni (shadow removal)
-            if (settings.enableShadowRemoval) {
-                processedData = removeShadows(processedData, settings.strength);
-            }
-
-            // 3. CLAHE - Contrast Limited Adaptive Histogram Equalization
-            if (settings.enableCLAHE) {
-                processedData = applyCLAHE(processedData, settings.strength);
-            }
-
-            // 4. Usuwanie szumu
-            if (settings.enableNoiseReduction) {
-                processedData = medianFilter(processedData);
-            }
-
-            // 5. Binaryzacja adaptacyjna (ostatnia - przygotowuje do OCR)
-            if (settings.enableAdaptiveThreshold) {
-                processedData = adaptiveThreshold(processedData);
-            }
-
-            // Aplikuj poprawione dane na canvas
-            ctx.putImageData(processedData, 0, 0);
+            console.log('🔧 Rozpoczynam poprawę jakości obrazu...');
             
-            return canvas;
-        }
-
-        function gammaCorrection(imageData, gamma) {
-            const data = new Uint8ClampedArray(imageData.data);
-            const lookupTable = new Array(256);
-            
-            // Przygotuj lookup table dla gamma correction
-            for (let i = 0; i < 256; i++) {
-                lookupTable[i] = Math.pow(i / 255, gamma) * 255;
-            }
-            
-            for (let i = 0; i < data.length; i += 4) {
-                data[i] = lookupTable[data[i]];     // R
-                data[i + 1] = lookupTable[data[i + 1]]; // G
-                data[i + 2] = lookupTable[data[i + 2]]; // B
-                // Alpha remains unchanged
-            }
-            
-            return new ImageData(data, imageData.width, imageData.height);
-        }
-
-        function removeShadows(imageData, strength) {
-            const data = new Uint8ClampedArray(imageData.data);
-            const width = imageData.width;
-            const height = imageData.height;
-            
-            // Konwertuj na grayscale dla prostszej analizy
-            const gray = new Array(width * height);
-            for (let i = 0; i < data.length; i += 4) {
-                const idx = i / 4;
-                gray[idx] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-            }
-            
-            // Oblicz lokalną średnią (shadow estimation)
-            const kernelSize = Math.max(3, Math.floor(Math.min(width, height) / 50));
-            const background = estimateBackground(gray, width, height, kernelSize);
-            
-            // Usuń cienie
-            for (let i = 0; i < data.length; i += 4) {
-                const idx = i / 4;
-                const shadowFactor = background[idx] > 0 ? 255 / background[idx] : 1;
-                const correctionFactor = 1 + (shadowFactor - 1) * strength;
+            try {
+                const ctx = canvas.getContext('2d');
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 
-                data[i] = Math.min(255, data[i] * correctionFactor);     // R
-                data[i + 1] = Math.min(255, data[i + 1] * correctionFactor); // G
-                data[i + 2] = Math.min(255, data[i + 2] * correctionFactor); // B
-            }
-            
-            return new ImageData(data, imageData.width, imageData.height);
-        }
-
-        function estimateBackground(gray, width, height, kernelSize) {
-            const background = new Array(gray.length);
-            const halfKernel = Math.floor(kernelSize / 2);
-            
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    let sum = 0;
-                    let count = 0;
-                    
-                    // Oblicz lokalną średnią (maksimum dla szacowania tła)
-                    for (let ky = -halfKernel; ky <= halfKernel; ky++) {
-                        for (let kx = -halfKernel; kx <= halfKernel; kx++) {
-                            const nx = x + kx;
-                            const ny = y + ky;
-                            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-                                sum = Math.max(sum, gray[ny * width + nx]);
-                                count++;
-                            }
-                        }
-                    }
-                    
-                    background[y * width + x] = count > 0 ? sum : gray[y * width + x];
+                // Skopiuj dane do przetworzenia
+                const data = new Uint8ClampedArray(imageData.data);
+                
+                // 1. Poprawa kontrastu
+                if (document.getElementById('enableContrast').checked) {
+                    console.log('📈 Poprawiam kontrast...');
+                    enhanceContrast(data);
                 }
+                
+                // 2. Rozjaśnianie ciemnych obszarów
+                if (document.getElementById('enableBrightness').checked) {
+                    console.log('💡 Rozjaśniam ciemne obszary...');
+                    brightenDarkAreas(data);
+                }
+                
+                // 3. Ostrzenie obrazu
+                if (document.getElementById('enableSharpening').checked) {
+                    console.log('🔍 Ostrzę obraz...');
+                    sharpenImage(data, canvas.width, canvas.height);
+                }
+                
+                // 4. Binaryzacja (opcjonalna)
+                if (document.getElementById('enableBinarization').checked) {
+                    console.log('⚫⚪ Binalizuję obraz...');
+                    binarizeImage(data);
+                }
+                
+                // Zastosuj zmiany
+                const newImageData = new ImageData(data, canvas.width, canvas.height);
+                ctx.putImageData(newImageData, 0, 0);
+                
+                console.log('✅ Poprawa jakości ukończona');
+                return canvas;
+                
+            } catch (error) {
+                console.error('❌ Błąd podczas poprawy jakości:', error);
+                // Zwróć oryginalny canvas w przypadku błędu
+                return canvas;
             }
-            
-            return background;
         }
 
-        function applyCLAHE(imageData, strength) {
-            const data = new Uint8ClampedArray(imageData.data);
-            const width = imageData.width;
-            const height = imageData.height;
-            
-            // Konwertuj na LAB space (uproszczone - używamy tylko luminance)
-            const lum = new Array(width * height);
+        function enhanceContrast(data) {
+            // Znajdź min i max wartości
+            let min = 255, max = 0;
             for (let i = 0; i < data.length; i += 4) {
-                const idx = i / 4;
-                lum[idx] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                min = Math.min(min, gray);
+                max = Math.max(max, gray);
             }
             
-            // Tile size dla lokalnej adaptacji
-            const tileSize = Math.max(8, Math.floor(Math.min(width, height) / 16));
-            const tilesX = Math.ceil(width / tileSize);
-            const tilesY = Math.ceil(height / tileSize);
-            
-            // Oblicz histogramy dla każdej tile
-            const tiles = [];
-            for (let ty = 0; ty < tilesY; ty++) {
-                tiles[ty] = [];
-                for (let tx = 0; tx < tilesX; tx++) {
-                    const hist = new Array(256).fill(0);
-                    
-                    // Zbierz histogram dla tile
-                    for (let y = ty * tileSize; y < Math.min((ty + 1) * tileSize, height); y++) {
-                        for (let x = tx * tileSize; x < Math.min((tx + 1) * tileSize, width); x++) {
-                            const val = Math.floor(lum[y * width + x]);
-                            hist[val]++;
-                        }
-                    }
-                    
-                    // Wyrównaj histogram z ograniczeniem kontrastu
-                    tiles[ty][tx] = equalizeHistogram(hist, strength);
+            if (max > min) {
+                const range = max - min;
+                for (let i = 0; i < data.length; i += 4) {
+                    // Rozciągnij kontrast
+                    data[i] = Math.min(255, Math.max(0, ((data[i] - min) / range) * 255));
+                    data[i + 1] = Math.min(255, Math.max(0, ((data[i + 1] - min) / range) * 255));
+                    data[i + 2] = Math.min(255, Math.max(0, ((data[i + 2] - min) / range) * 255));
                 }
             }
-            
-            // Zastosuj poprawki
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    const tx = Math.floor(x / tileSize);
-                    const ty = Math.floor(y / tileSize);
-                    const tileX = Math.min(tx, tilesX - 1);
-                    const tileY = Math.min(ty, tilesY - 1);
-                    
-                    const oldLum = lum[y * width + x];
-                    const newLum = tiles[tileY][tileX][Math.floor(oldLum)];
-                    
-                    if (oldLum > 0) {
-                        const factor = newLum / oldLum;
-                        const idx = (y * width + x) * 4;
-                        
-                        data[idx] = Math.min(255, data[idx] * factor);
-                        data[idx + 1] = Math.min(255, data[idx + 1] * factor);
-                        data[idx + 2] = Math.min(255, data[idx + 2] * factor);
-                    }
+        }
+
+        function brightenDarkAreas(data) {
+            for (let i = 0; i < data.length; i += 4) {
+                const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                
+                // Rozjaśnij piksele ciemniejsze niż 128
+                if (gray < 128) {
+                    const factor = 1.5; // Zwiększ jasność o 50%
+                    data[i] = Math.min(255, data[i] * factor);
+                    data[i + 1] = Math.min(255, data[i + 1] * factor);
+                    data[i + 2] = Math.min(255, data[i + 2] * factor);
                 }
             }
-            
-            return new ImageData(data, imageData.width, imageData.height);
         }
 
-        function equalizeHistogram(hist, clipLimit) {
-            const total = hist.reduce((a, b) => a + b, 0);
-            if (total === 0) return new Array(256).fill(0);
+        function sharpenImage(data, width, height) {
+            // Kernel do ostrzenia
+            const kernel = [
+                0, -1, 0,
+                -1, 5, -1,
+                0, -1, 0
+            ];
             
-            // Ograniczenie kontrastu
-            const limit = Math.floor(total * clipLimit / 256);
-            const clipped = hist.map(val => Math.min(val, limit));
-            
-            // Wyrównanie histogramu
-            const cdf = new Array(256);
-            cdf[0] = clipped[0];
-            for (let i = 1; i < 256; i++) {
-                cdf[i] = cdf[i - 1] + clipped[i];
-            }
-            
-            const totalClipped = cdf[255];
-            const mapping = new Array(256);
-            for (let i = 0; i < 256; i++) {
-                mapping[i] = totalClipped > 0 ? (cdf[i] * 255) / totalClipped : i;
-            }
-            
-            return mapping;
-        }
-
-        function medianFilter(imageData, kernelSize = 3) {
-            const data = new Uint8ClampedArray(imageData.data);
-            const width = imageData.width;
-            const height = imageData.height;
             const result = new Uint8ClampedArray(data);
-            const halfKernel = Math.floor(kernelSize / 2);
             
-            for (let y = halfKernel; y < height - halfKernel; y++) {
-                for (let x = halfKernel; x < width - halfKernel; x++) {
-                    for (let c = 0; c < 3; c++) { // RGB only
-                        const values = [];
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    for (let c = 0; c < 3; c++) { // RGB tylko
+                        let sum = 0;
+                        let kernelIndex = 0;
                         
-                        for (let ky = -halfKernel; ky <= halfKernel; ky++) {
-                            for (let kx = -halfKernel; kx <= halfKernel; kx++) {
+                        for (let ky = -1; ky <= 1; ky++) {
+                            for (let kx = -1; kx <= 1; kx++) {
                                 const idx = ((y + ky) * width + (x + kx)) * 4 + c;
-                                values.push(data[idx]);
+                                sum += data[idx] * kernel[kernelIndex];
+                                kernelIndex++;
                             }
                         }
                         
-                        values.sort((a, b) => a - b);
-                        const medianIdx = (y * width + x) * 4 + c;
-                        result[medianIdx] = values[Math.floor(values.length / 2)];
+                        const idx = (y * width + x) * 4 + c;
+                        result[idx] = Math.min(255, Math.max(0, sum));
                     }
                 }
             }
             
-            return new ImageData(result, imageData.width, imageData.height);
+            // Kopiuj wynik z powrotem
+            for (let i = 0; i < data.length; i++) {
+                data[i] = result[i];
+            }
         }
 
-        function adaptiveThreshold(imageData, blockSize = 15, C = 10) {
-            const data = new Uint8ClampedArray(imageData.data);
-            const width = imageData.width;
-            const height = imageData.height;
+        function binarizeImage(data) {
+            // Oblicz próg Otsu
+            const histogram = new Array(256).fill(0);
             
-            // Konwertuj na grayscale
-            const gray = new Array(width * height);
+            // Konwertuj do grayscale i zbuduj histogram
             for (let i = 0; i < data.length; i += 4) {
-                const idx = i / 4;
-                gray[idx] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+                histogram[gray]++;
             }
             
-            const halfBlock = Math.floor(blockSize / 2);
+            // Znajdź optymalny próg (uproszczony Otsu)
+            const total = data.length / 4;
+            let threshold = 128; // domyślny próg
             
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    let sum = 0;
-                    let count = 0;
-                    
-                    // Oblicz lokalną średnią
-                    for (let ky = Math.max(0, y - halfBlock); ky <= Math.min(height - 1, y + halfBlock); ky++) {
-                        for (let kx = Math.max(0, x - halfBlock); kx <= Math.min(width - 1, x + halfBlock); kx++) {
-                            sum += gray[ky * width + kx];
-                            count++;
-                        }
-                    }
-                    
-                    const mean = sum / count;
-                    const threshold = mean - C;
-                    const idx = (y * width + x) * 4;
-                    const value = gray[y * width + x] > threshold ? 255 : 0;
-                    
-                    data[idx] = value;     // R
-                    data[idx + 1] = value; // G
-                    data[idx + 2] = value; // B
+            let bestVariance = 0;
+            for (let t = 0; t < 256; t++) {
+                let wB = 0; // waga tła
+                let wF = 0; // waga pierwszego planu
+                let sumB = 0;
+                
+                for (let i = 0; i <= t; i++) {
+                    wB += histogram[i];
+                    sumB += i * histogram[i];
+                }
+                
+                if (wB === 0) continue;
+                
+                wF = total - wB;
+                if (wF === 0) break;
+                
+                const mB = sumB / wB; // średnia tła
+                const mF = (total * 128 - sumB) / wF; // średnia pierwszego planu (uproszczone)
+                
+                const variance = wB * wF * (mB - mF) * (mB - mF);
+                
+                if (variance > bestVariance) {
+                    bestVariance = variance;
+                    threshold = t;
                 }
             }
             
-            return new ImageData(data, imageData.width, imageData.height);
+            // Zastosuj binaryzację
+            for (let i = 0; i < data.length; i += 4) {
+                const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                const value = gray > threshold ? 255 : 0;
+                
+                data[i] = value;     // R
+                data[i + 1] = value; // G
+                data[i + 2] = value; // B
+                // Alpha pozostaje bez zmian
+            }
         }
 
         // ========================================
-        // RESZTA ORYGINALNEGO KODU
+        // OBSŁUGA PLIKÓW I KAMERY
         // ========================================
 
         // Obsługa drag & drop
@@ -750,8 +619,8 @@
                 let constraints = { 
                     video: { 
                         facingMode: 'environment',
-                        width: { ideal: 1920 }, // Wyższa rozdzielczość dla lepszego OCR
-                        height: { ideal: 1080 }
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
                     } 
                 };
 
@@ -761,8 +630,8 @@
                     console.log('Kamera tylna niedostępna, próbuję z przednią:', envError.message);
                     constraints = { 
                         video: { 
-                            width: { ideal: 1920 },
-                            height: { ideal: 1080 }
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
                         } 
                     };
                     cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -806,25 +675,18 @@
                     return;
                 }
                 
-                canvas.width = video.videoWidth || 1920;
-                canvas.height = video.videoHeight || 1080;
+                canvas.width = video.videoWidth || 1280;
+                canvas.height = video.videoHeight || 720;
                 
                 console.log('Rozmiar zdjęcia:', canvas.width, 'x', canvas.height);
                 
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                 
-                canvas.toBlob((blob) => {
-                    if (!blob) {
-                        showError('Nie udało się przechwycić zdjęcia. Spróbuj ponownie.');
-                        return;
-                    }
-                    
-                    console.log('Zdjęcie przechwycone, rozmiar blob:', blob.size, 'bajtów');
-                    
-                    stopCamera();
-                    processImageFromCanvas(canvas);
-                }, 'image/jpeg', 0.95);
+                console.log('Zdjęcie przechwycone');
+                
+                stopCamera();
+                processImageFromCanvas(canvas);
                 
             } catch (error) {
                 console.error('Błąd podczas robienia zdjęcia:', error);
@@ -873,6 +735,8 @@
         });
 
         function handleFile(file) {
+            console.log('📁 Przetwarzam plik:', file.name, file.type);
+            
             if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
                 showError('Proszę wybrać plik obrazu (JPG, PNG, WebP) lub PDF');
                 return;
@@ -891,29 +755,40 @@
         }
 
         function handleImage(file) {
+            console.log('🖼️ Ładuję obraz z pliku...');
+            
             const reader = new FileReader();
             reader.onload = (e) => {
-                // Stwórz canvas z oryginalnym obrazem
                 const img = new Image();
                 img.onload = () => {
+                    console.log('🖼️ Obraz załadowany:', img.width, 'x', img.height);
+                    
+                    // Stwórz canvas z oryginalnym obrazem
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
                     canvas.width = img.width;
                     canvas.height = img.height;
                     ctx.drawImage(img, 0, 0);
                     
+                    // Pokaż oryginalny podgląd
+                    originalImage.src = e.target.result;
+                    previewContainer.style.display = 'flex';
+                    
                     processImageFromCanvas(canvas);
                 };
+                img.onerror = () => {
+                    showError('Nie można załadować obrazu. Sprawdź czy plik nie jest uszkodzony.');
+                };
                 img.src = e.target.result;
-                
-                // Pokaż oryginalny podgląd
-                originalImage.src = e.target.result;
-                previewContainer.style.display = 'flex';
+            };
+            reader.onerror = () => {
+                showError('Błąd podczas odczytywania pliku.');
             };
             reader.readAsDataURL(file);
         }
 
         async function handlePDF(file) {
+            console.log('📄 Przetwarzam PDF...');
             showLoading();
             
             try {
@@ -922,14 +797,18 @@
                 const arrayBuffer = await file.arrayBuffer();
                 const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
                 
+                console.log('📄 PDF załadowany, liczba stron:', pdf.numPages);
+                
                 const page = await pdf.getPage(1);
-                const scale = 3.0; // Jeszcze wyższa jakość dla OCR
+                const scale = 2.0; // Dobra jakość dla OCR
                 const viewport = page.getViewport({scale: scale});
                 
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
                 canvas.height = viewport.height;
                 canvas.width = viewport.width;
+                
+                console.log('📄 Renderuję stronę PDF:', canvas.width, 'x', canvas.height);
                 
                 const renderContext = {
                     canvasContext: context,
@@ -949,16 +828,17 @@
                 
             } catch (error) {
                 hideLoading();
+                console.error('❌ Błąd PDF:', error);
                 showError('Błąd podczas przetwarzania PDF: ' + error.message);
             }
         }
 
         async function processImageFromCanvas(originalCanvas) {
+            console.log('🔄 Rozpoczynam przetwarzanie obrazu...');
+            
             try {
                 showLoading();
                 updateProgress(10);
-                
-                console.log('🖼️ Rozpoczynam poprawę jakości obrazu...');
                 
                 // Skopiuj canvas dla poprawy jakości
                 const enhancedCanvas = document.createElement('canvas');
@@ -981,26 +861,13 @@
                 enhancedCanvas.toBlob((blob) => {
                     const url = URL.createObjectURL(blob);
                     enhancedImage.src = url;
+                    console.log('🖼️ Poprawiony obraz wyświetlony');
                 });
-                
-                // Dodaj informację o zastosowanych poprawkach
-                const appliedEnhancements = [];
-                if (document.getElementById('enableCLAHE').checked) appliedEnhancements.push('CLAHE');
-                if (document.getElementById('enableShadowRemoval').checked) appliedEnhancements.push('Usuwanie cieni');
-                if (document.getElementById('enableAdaptiveThreshold').checked) appliedEnhancements.push('Binaryzacja adaptacyjna');
-                if (document.getElementById('enableNoiseReduction').checked) appliedEnhancements.push('Usuwanie szumu');
-                if (document.getElementById('enableGammaCorrection').checked) appliedEnhancements.push('Korekcja gamma');
-                
-                results.innerHTML = `
-                    <div class="enhancement-info">
-                        <strong>✨ Zastosowane poprawki:</strong> ${appliedEnhancements.join(', ')}<br>
-                        <strong>⏱️ Czas przetwarzania:</strong> ${enhanceTime.toFixed(2)}ms
-                    </div>
-                `;
                 
                 updateProgress(50);
                 
                 // Uruchom OCR na poprawionym obrazie
+                console.log('🔍 Rozpoczynam OCR...');
                 const result = await Tesseract.recognize(
                     enhancedCanvas,
                     'pol+eng',
@@ -1009,55 +876,38 @@
                             if (m.status === 'recognizing text') {
                                 updateProgress(50 + (m.progress * 50));
                             }
+                            console.log('OCR:', m.status, m.progress ? `${Math.round(m.progress * 100)}%` : '');
                         },
                         tessedit_pageseg_mode: Tesseract.PSM.AUTO,
                         tessedit_ocr_engine_mode: Tesseract.OEM.LSTM_ONLY,
                         preserve_interword_spaces: '1',
                         tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ąćęłńóśźżĄĆĘŁŃÓŚŹŻ .,;:-+()[]{}/',
-                        user_defined_dpi: '300',
-                        textord_heavy_nr: '1',
-                        textord_min_linesize: '2.5',
-                        tessedit_reject_bad_qual_wds: '1',
-                        load_system_dawg: '0',
-                        load_freq_dawg: '0'
+                        user_defined_dpi: '300'
                     }
                 );
 
                 hideLoading();
                 
+                console.log('✅ OCR ukończony');
                 console.log('🔍 OCR confidence:', result.data.confidence);
-                console.log('📝 Rozpoznany tekst:', result.data.text);
+                console.log('📝 Rozpoznany tekst:', result.data.text.substring(0, 200) + '...');
                 
                 analyzeReceipt(result.data.text, result.data.confidence, enhanceTime);
                 
             } catch (error) {
                 hideLoading();
+                console.error('❌ Błąd podczas przetwarzania:', error);
                 showError('Błąd podczas analizowania obrazu: ' + error.message);
             }
         }
 
-        async function processImage(file) {
-            const img = new Image();
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                ctx.drawImage(img, 0, 0);
-                
-                processImageFromCanvas(canvas);
-            };
-            
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                img.src = e.target.result;
-                originalImage.src = e.target.result;
-                previewContainer.style.display = 'flex';
-            };
-            reader.readAsDataURL(file);
-        }
+        // ========================================
+        // ANALIZA PARAGONU - ORYGINALNY KOD
+        // ========================================
 
         function analyzeReceipt(text, confidence = 0, enhanceTime = 0) {
+            console.log('📋 Analizuję paragon...');
+            
             const lines = text.split('\n').filter(line => line.trim().length > 3);
             const products = [];
             
@@ -1073,6 +923,7 @@
                 }
             }
             
+            console.log('📦 Znaleziono produktów:', products.length);
             displayResults(products, detectedStore, confidence, enhanceTime);
         }
 
@@ -1387,11 +1238,10 @@
             
             // Sprawdź jakie poprawki zostały zastosowane
             const appliedEnhancements = [];
-            if (document.getElementById('enableCLAHE').checked) appliedEnhancements.push('CLAHE');
-            if (document.getElementById('enableShadowRemoval').checked) appliedEnhancements.push('Usuwanie cieni');
-            if (document.getElementById('enableAdaptiveThreshold').checked) appliedEnhancements.push('Binaryzacja adaptacyjna');
-            if (document.getElementById('enableNoiseReduction').checked) appliedEnhancements.push('Usuwanie szumu');
-            if (document.getElementById('enableGammaCorrection').checked) appliedEnhancements.push('Korekcja gamma');
+            if (document.getElementById('enableContrast').checked) appliedEnhancements.push('Kontrast');
+            if (document.getElementById('enableBrightness').checked) appliedEnhancements.push('Rozjaśnianie');
+            if (document.getElementById('enableSharpening').checked) appliedEnhancements.push('Ostrzenie');
+            if (document.getElementById('enableBinarization').checked) appliedEnhancements.push('Binaryzacja');
             
             let html = `
                 <div style="background: #e8f5e8; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
@@ -1433,22 +1283,21 @@
                 
             html += `
                 <div style="margin-top: 20px; padding: 15px; background: #f0f8ff; border-radius: 5px;">
-                    <strong>🚀 System poprawy jakości obrazu:</strong><br>
-                    • <strong>CLAHE:</strong> adaptacyjne wyrównywanie histogramu<br>
-                    • <strong>Usuwanie cieni:</strong> korekta nierównego oświetlenia<br>
-                    • <strong>Binaryzacja adaptacyjna:</strong> optymalna segmentacja tekstu<br>
-                    • <strong>Usuwanie szumu:</strong> filtr medianowy<br>
-                    • <strong>Korekcja gamma:</strong> rozjaśnianie ciemnych obszarów<br>
+                    <strong>🚀 Funkcje poprawy jakości obrazu:</strong><br>
+                    • <strong>Kontrast:</strong> rozciąga zakres jasności<br>
+                    • <strong>Rozjaśnianie:</strong> poprawia widoczność ciemnych obszarów<br>
+                    • <strong>Ostrzenie:</strong> zwiększa czytelność tekstu<br>
+                    • <strong>Binaryzacja:</strong> konwertuje do czarno-białego (eksperymentalna)<br>
                     Baza danych: ${dbInfo}
                 </div>
                 
                 <div style="margin-top: 15px; padding: 15px; background: #fff3cd; border-radius: 5px;">
                     <strong>💡 Porady dla lepszego skanowania:</strong><br>
-                    1. <strong>Oświetlenie:</strong> Ustaw paragon pod kątem do światła<br>
-                    2. <strong>Stabilność:</strong> Utrzymaj telefon nieruchomo<br>
-                    3. <strong>Odległość:</strong> Wypełnij kadrem cały paragon<br>
-                    4. <strong>Jakość:</strong> Unikaj odbić i cieni<br>
-                    5. <strong>Ustawienia:</strong> Eksperymentuj z ustawieniami poprawy
+                    1. <strong>Oświetlenie:</strong> Unikaj cieni i odbić<br>
+                    2. <strong>Stabilność:</strong> Trzymaj telefon stabilnie<br>
+                    3. <strong>Jakość:</strong> Ustaw paragon płasko<br>
+                    4. <strong>Kąt:</strong> Zrób zdjęcie prostopadle do paragonu<br>
+                    5. <strong>Ustawienia:</strong> Eksperymentuj z checkbox'ami powyżej
                 </div>
             `;
             
